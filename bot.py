@@ -25,10 +25,9 @@ async def start(message: types.Message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("Залишити заявку")
     await message.answer(
-        "👋 *Вітаємо у Vodafone 🇺🇦* \n\n"
+        "👋 *Вітаємо у Vodafone 🇺🇦*\n\n"
 	"👻 *Це наш бот Тарас 🤖*\n"  
 	"☑️ *Переваги домашного інтернету від Vodafone це...*\n"
-
 	"🥇 *Нова, сучасна та швидкісна мережа за технологією GPON*\n"
 	"🥇 *Безкоштовне підключення*\n"
 	"🥇 *Понад 72 години працює без світла!*\n"
@@ -48,17 +47,20 @@ async def send_chat_id(message: types.Message):
 @dp.message_handler(lambda message: message.text == "Залишити заявку")
 async def get_name(message: types.Message):
     user_data[message.chat.id] = {}
-    await message.answer("Введіть повністю ваше прізвище, ім'я та по батькові (наприклад: Тарасов Тарас Тарасович):")
+    await message.answer("Введіть повністю ваше прізвище, ім'я та по батькові 
+    (наприклад: Тарасов Тарас Тарасович):")
 
 @dp.message_handler(lambda message: message.chat.id in user_data and 'name' not in user_data[message.chat.id])
 async def get_address(message: types.Message):
     user_data[message.chat.id]['name'] = message.text
-    await message.answer("Введіть повність вашу адресу підключення (місто, вулиця, квартира):")
+    await message.answer("Введіть повністю вашу адресу для підключення 
+    (місто, вулиця, квартира):")
 
 @dp.message_handler(lambda message: message.chat.id in user_data and 'address' not in user_data[message.chat.id])
 async def get_phone(message: types.Message):
     user_data[message.chat.id]['address'] = message.text
-    await message.answer("Введіть повністю ваш номер телефону (починаючи з 380.........):")
+    await message.answer("Введіть повністю ваш номер телефону 
+    (починаючи з 380_____________):")
 
 @dp.message_handler(lambda message: message.chat.id in user_data and 'phone' not in user_data[message.chat.id])
 async def choose_tariff(message: types.Message):
