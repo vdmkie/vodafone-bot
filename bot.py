@@ -37,6 +37,10 @@ async def start(message: types.Message):
         parse_mode="Markdown"
     )
 
+@dp.message_handler(commands=['id'])
+async def send_chat_id(message: types.Message):
+    await message.answer(f"Ваш CHAT_ID: `{message.chat.id}`", parse_mode="Markdown")
+
 @dp.message_handler(lambda message: message.text == "Залишити заявку")
 async def get_name(message: types.Message):
     user_data[message.chat.id] = {}
