@@ -110,7 +110,7 @@ async def finish(message: types.Message):
     data = user_data[message.chat.id]
 
     text = (
-        "📩 Нова заявка на підключення інтернету:\n\n"
+        "📩 Нова заявка від Рогальов:\n\n"
         f"👤 ПІБ: {data['name']}\n"
         f"🏠 Адреса: {data['address']}\n"
         f"📞 Телефон: {data['phone']}\n"
