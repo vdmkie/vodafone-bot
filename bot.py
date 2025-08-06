@@ -114,7 +114,7 @@ async def finish(message: types.Message):
     data = user_data[message.chat.id]
 
     text = (
-        "📩 Заявка від Рогальов Вадим:\n\n"
+        "📩 Нова заявка на підключення інтернету:\n\n"
         f"👤 ПІБ: {data['name']}\n"
         f"🏠 Адреса: {data['address']}\n"
         f"📞 Телефон: {data['phone']}\n"
@@ -128,4 +128,11 @@ async def finish(message: types.Message):
         reply_markup=types.ReplyKeyboardRemove()
     )
 
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add("Залишити заявку")
+    await message.answer("Якщо бажаєте залишити ще одну заявку — натисніть кнопку нижче.", reply_markup=markup)
+
     del user_data[message.chat.id]
+
+if __name__ == '__main__':
+    executor.start_polling(dp, skip_updates=True)
