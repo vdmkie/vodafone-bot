@@ -26,8 +26,6 @@ TARIFFS = {
         "Домашній інтернет Гігабіт+TV Pro (3 місяці безкоштовно, потім 350 грн/міс.)"
 }
 
-}
-
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
     user_data[message.chat.id] = {}
