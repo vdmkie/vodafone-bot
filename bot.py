@@ -96,7 +96,7 @@ async def menu_handler(message: types.Message):
 
     if text == "Замовити підключення":
         user_data[chat_id]["step"] = "get_name"
-        msg = await message.answer("Введіть повныстю ПІБ (наприклад: Тарасов Тарас Тарасович):", reply_markup=types.ReplyKeyboardRemove())
+        msg = await message.answer("Введіть повністю ПІБ (наприклад: Тарасов Тарас Тарасович):", reply_markup=types.ReplyKeyboardRemove())
         await save_message(chat_id, msg)
 
     elif text == "Промо-код":
@@ -108,14 +108,13 @@ async def menu_handler(message: types.Message):
         url = "https://www.google.com/maps/d/u/0/viewer?mid=1T0wyMmx7jf99vNKMX9qBkqxPnefPbnY&ll=50.45869537257289%2C30.529932392320312&z=11"
         msg = await message.answer(f"Перевірте покриття за посиланням:\n{url}")
         await save_message(chat_id, msg)
-        # Вернуть в меню
         msg2 = await message.answer("Головне меню:", reply_markup=main_menu())
         await save_message(chat_id, msg2)
         user_data[chat_id]["step"] = None
 
     elif text == "Замовити консультацію":
         user_data[chat_id]["step"] = "consult_name"
-        msg = await message.answer("Введіть повныстю ПІБ для консультації (наприклад: Тарасов Тарас Тарасович):", reply_markup=types.ReplyKeyboardRemove())
+        msg = await message.answer("Введіть повністю ПІБ для консультації (наприклад: Тарасов Тарас Тарасович):", reply_markup=types.ReplyKeyboardRemove())
         await save_message(chat_id, msg)
 
 @dp.message_handler()
@@ -130,7 +129,7 @@ async def general_handler(message: types.Message):
         if text.lower() == "vdmkie":
             user_data[chat_id]["promo"] = True
             user_data[chat_id]["step"] = "get_name"
-            msg = await message.answer("Промо-код прийнято! Введіть повныстю ПІБ (наприклад: Тарасов Тарас Тарасович")
+            msg = await message.answer("Промо-код прийнято! Введіть повністю ПІБ (наприклад: Тарасов Тарас Тарасович)")
             await save_message(chat_id, msg)
         else:
             msg = await message.answer("Невірний промо-код. Спробуйте ще раз або напишіть 'Завершити' для виходу.")
@@ -138,7 +137,7 @@ async def general_handler(message: types.Message):
 
     elif step == "get_name" or step == "consult_name":
         if not is_valid_name(text):
-            msg = await message.answer("Помилка! Введітповныстю ПІБ (наприклад: Тарасов Тарас Тарасович).")
+            msg = await message.answer("Помилка! Введіть повністю ПІБ (наприклад: Тарасов Тарас Тарасович).")
             await save_message(chat_id, msg)
             return
 
@@ -155,7 +154,7 @@ async def general_handler(message: types.Message):
             return
 
         user_data[chat_id]["step"] = "get_address"
-        msg = await message.answer("Введіть адресу у форматі (місто, вулиця, будинок, квартира):")
+        msg = await message.answer("Введіть повну адресу у форматі (місто, вулиця, будинок, квартира):")
         await save_message(chat_id, msg)
 
     elif step == "get_address":
@@ -175,7 +174,6 @@ async def general_handler(message: types.Message):
             return
         user_data[chat_id]["phone"] = text
 
-        # Показываем тарифы
         tariffs = PROMO_TARIFFS if user_data[chat_id].get("promo") else TARIFFS
         kb = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
         for key in tariffs.keys():
@@ -193,7 +191,6 @@ async def general_handler(message: types.Message):
 
         user_data[chat_id]["tariff"] = tariffs[text]
 
-        # Отправляем заявку
         order_text = (
             f"Заявка на підключення - автор Вадим Рогальов:\n"
             f"ПІБ: {user_data[chat_id]['name']}\n"
@@ -216,7 +213,6 @@ async def general_handler(message: types.Message):
         user_data[chat_id]["step"] = None
 
     else:
-        # Если пользователь пишет что-то непонятное
         msg = await message.answer("Будь ласка, оберіть дію з меню або напишіть /start для початку.")
         await save_message(chat_id, msg)
 
