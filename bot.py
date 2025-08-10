@@ -36,7 +36,8 @@ PROMO_TARIFFS = {
 }
 
 def is_valid_name(name):
-    return bool(re.match(r"^[А-ЯІЇЄҐа-яіїєґ]+\s[А-ЯІЇЄҐа-яіїєґ]+\s[А-ЯІЇЄҐа-яіїєґ]+$", name.strip()))
+    # Проверка: три слова, каждое с заглавной буквы, украинские буквы
+    return bool(re.match(r"^[А-ЩЬЮЯІЇЄҐ][а-щьюяіїєґ]+\s[А-ЩЬЮЯІЇЄҐ][а-щьюяіїєґ]+\s[А-ЩЬЮЯІЇЄҐ][а-щьюяіїєґ]+$", name.strip()))
 
 def is_valid_address(address):
     return len(address.strip()) >= 10  # Простая проверка длины
@@ -105,7 +106,7 @@ async def menu_handler(message: types.Message):
 
     if message.text == "Замовити підключення":
         user_data[chat_id]["step"] = "waiting_for_name"
-        msg = await message.answer("Введіть ПІБ (наприклад: Тарасов Тарас Тарасович):", reply_markup=types.ReplyKeyboardRemove())
+        msg = await message.answer("Введіть повністю ПІБ (наприклад: Тарасов Тарас Тарасович):", reply_markup=types.ReplyKeyboardRemove())
         await add_message(chat_id, msg)
 
     elif message.text == "Промо-код":
@@ -115,7 +116,7 @@ async def menu_handler(message: types.Message):
 
     elif message.text == "Замовити консультацію":
         user_data[chat_id]["step"] = "consult_name"
-        msg = await message.answer("Введіть ПІБ (наприклад: Тарасов Тарас Тарасович):", reply_markup=types.ReplyKeyboardRemove())
+        msg = await message.answer("Введіть повністю ПІБ (наприклад: Тарасов Тарас Тарасович):", reply_markup=types.ReplyKeyboardRemove())
         await add_message(chat_id, msg)
 
     elif message.text == "Перевірити покриття":
@@ -145,13 +146,21 @@ async def handle_coverage(message: types.Message):
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "waiting_for_promo")
 async def promo_code_handler(message: types.Message):
     chat_id = message.chat.id
+    text = message.text.strip()
     await add_message(chat_id, message)
 
-    if message.text.strip().lower() == "vdmkie":
+    if text.lower() == "vdmkie":
         user_data[chat_id]["promo"] = True
         user_data[chat_id]["step"] = "waiting_for_name"
-        msg = await message.answer("✅ Промо-код прийнято! Введіть ПІБ (наприклад: Тарасов Тарас Тарасович):")
+        msg = await message.answer("✅ Промо-код прийнято! Введіть повністю ПІБ (наприклад: Тарасов Тарас Тарасович):")
         await add_message(chat_id, msg)
+
+    elif text == "Завершити":
+        await delete_all_messages(chat_id)
+        user_data[chat_id] = {"messages": [], "step": None}
+        msg = await message.answer("Повернулись в головне меню.", reply_markup=get_main_menu())
+        await add_message(chat_id, msg)
+
     else:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         markup.add("Завершити")
@@ -168,12 +177,12 @@ async def order_handler(message: types.Message):
 
     if step == "waiting_for_name":
         if not is_valid_name(text):
-            msg = await message.answer("❗ Введіть повне ПІБ (3 слова, наприклад: Тарасов Тарас Тарасович):")
+            msg = await message.answer("❗ Введіть повністю ПІБ (3 слова, кожне з великої літери, наприклад: Тарасов Тарас Тарасович):")
             await add_message(chat_id, msg)
             return
         user_data[chat_id]["name"] = text
         user_data[chat_id]["step"] = "waiting_for_address"
-        msg = await message.answer("Введіть адресу підключення (мінімум 10 символів):")
+        msg = await message.answer("Введіть повну адресу на підключення (місто, вулиця, будинок, квартира):")
         await add_message(chat_id, msg)
 
     elif step == "waiting_for_address":
@@ -188,124 +197,118 @@ async def order_handler(message: types.Message):
 
     elif step == "waiting_for_phone":
         if not is_valid_phone(text):
-            msg = await message.answer("❗ Невірний формат номера телефону. Введіть у форматі 380XXXXXXXXX:")
+            msg = await message.answer("❗ Некоректний номер телефону. Введіть у форматі 380XXXXXXXXX:")
             await add_message(chat_id, msg)
             return
+
         user_data[chat_id]["phone"] = text
 
-        # Формируем и отправляем заявку в чат
+        # Формируем заявку и отправляем в чат
         promo = user_data[chat_id].get("promo", False)
-        if promo:
-            tariffs = PROMO_TARIFFS
-        else:
-            tariffs = TARIFFS
-
-        tariff_text = "\n".join([f"{k}" for k in tariffs.keys()])
-        tariff_buttons = list(tariffs.keys())
-
+        tariffs = PROMO_TARIFFS if promo else TARIFFS
+        tariff_text = "\n".join(tariffs.keys())
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-        for t in tariff_buttons:
-            markup.add(t)
+        for key in tariffs.keys():
+            markup.add(key)
+        markup.add("Завершити")
 
         user_data[chat_id]["step"] = "waiting_for_tariff"
-        msg = await message.answer(
-            "Оберіть тариф:",
-            reply_markup=markup
-        )
+        msg = await message.answer("Оберіть тариф:", reply_markup=markup)
         await add_message(chat_id, msg)
 
-# === Выбор тарифа после ввода телефона ===
+# === Выбор тарифа ===
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "waiting_for_tariff")
 async def tariff_handler(message: types.Message):
     chat_id = message.chat.id
     text = message.text.strip()
     await add_message(chat_id, message)
 
+    if text == "Завершити":
+        await delete_all_messages(chat_id)
+        user_data[chat_id] = {"messages": [], "step": None}
+        msg = await message.answer("Повернулись в головне меню.", reply_markup=get_main_menu())
+        await add_message(chat_id, msg)
+        return
+
     promo = user_data[chat_id].get("promo", False)
     tariffs = PROMO_TARIFFS if promo else TARIFFS
 
     if text not in tariffs:
-        msg = await message.answer("❗ Будь ласка, виберіть тариф з меню нижче.")
+        msg = await message.answer("❗ Будь ласка, оберіть тариф із запропонованого списку.")
         await add_message(chat_id, msg)
         return
 
-    user_data[chat_id]["tariff"] = tariffs[text]
-
-    name = user_data[chat_id]["name"]
-    address = user_data[chat_id]["address"]
-    phone = user_data[chat_id]["phone"]
-    tariff = user_data[chat_id]["tariff"]
+    # Формируем заявку
+    tariff = tariffs[text]
+    name = user_data[chat_id].get("name", "Невідомо")
+    address = user_data[chat_id].get("address", "Невідомо")
+    phone = user_data[chat_id].get("phone", "Невідомо")
+    promo_status = "Так" if promo else "Ні"
 
     order_text = (
-        f"Нова заявка!\n"
+        f"📝 *Заявка на підключення - автор Вадим Рогальов *\n"
         f"ПІБ: {name}\n"
         f"Адреса: {address}\n"
         f"Телефон: {phone}\n"
-        f"Тариф: {tariff}"
+        f"Тариф: {tariff}\n"
+        f"Промо-код: {promo_status}"
     )
 
-    await bot.send_message(CHAT_ID, order_text)
-
-    await delete_all_messages(chat_id)
-
-    msg = await message.answer(
-        "✅ Дякуємо! Ваша заявка прийнята. Скоро з вами зв'яжеться наш оператор.",
-        reply_markup=get_main_menu()
-    )
-    await add_message(chat_id, msg)
-
-    user_data[chat_id]["step"] = None
-    user_data[chat_id].pop("promo", None)
+    try:
+        await bot.send_message(CHAT_ID, order_text, parse_mode="Markdown")
+        await delete_all_messages(chat_id)
+        user_data[chat_id] = {"messages": [], "step": None}
+        msg = await message.answer("✅ Ваша заявка прийнята! Незабаром з вами зв'яжеться наш оператор.", reply_markup=get_main_menu())
+        await add_message(chat_id, msg)
+    except Exception as e:
+        msg = await message.answer(f"❗ Помилка надсилання заявки: {e}")
+        await add_message(chat_id, msg)
 
 # === Обработка "Замовити консультацію" ===
-@dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "consult_name")
-async def consult_name_handler(message: types.Message):
+@dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") in ["consult_name", "consult_phone"])
+async def consult_handler(message: types.Message):
     chat_id = message.chat.id
+    step = user_data[chat_id]["step"]
     text = message.text.strip()
     await add_message(chat_id, message)
 
-    if not is_valid_name(text):
-        msg = await message.answer("❗ Введіть повне ПІБ (3 слова, наприклад: Тарасов Тарас Тарасович):")
+    if step == "consult_name":
+        if not is_valid_name(text):
+            msg = await message.answer("❗ Введіть повне ПІБ (3 слова, кожне з великої літери, наприклад: Тарасов Тарас Тарасович):")
+            await add_message(chat_id, msg)
+            return
+        user_data[chat_id]["name"] = text
+        user_data[chat_id]["step"] = "consult_phone"
+        msg = await message.answer("Введіть номер телефону у форматі 380XXXXXXXXX (без +):")
         await add_message(chat_id, msg)
-        return
 
-    user_data[chat_id]["consult_name"] = text
-    user_data[chat_id]["step"] = "consult_phone"
-    msg = await message.answer("Введіть номер телефону у форматі 380XXXXXXXXX (без +):")
-    await add_message(chat_id, msg)
+    elif step == "consult_phone":
+        if not is_valid_phone(text):
+            msg = await message.answer("❗ Некоректний номер телефону. Введіть у форматі 380XXXXXXXXX:")
+            await add_message(chat_id, msg)
+            return
+        user_data[chat_id]["phone"] = text
 
-@dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "consult_phone")
-async def consult_phone_handler(message: types.Message):
-    chat_id = message.chat.id
-    text = message.text.strip()
-    await add_message(chat_id, message)
+        name = user_data[chat_id].get("name", "Невідомо")
+        phone = user_data[chat_id].get("phone", "Невідомо")
 
-    if not is_valid_phone(text):
-        msg = await message.answer("❗ Невірний формат номера телефону. Введіть у форматі 380XXXXXXXXX:")
-        await add_message(chat_id, msg)
-        return
+        consult_text = (
+            f"📝 *Нова заявка на консультацію*\n"
+            f"ПІБ: {name}\n"
+            f"Телефон: {phone}"
+        )
 
-    name = user_data[chat_id]["consult_name"]
-    phone = text
+        try:
+            await bot.send_message(CHAT_ID, consult_text, parse_mode="Markdown")
+            await delete_all_messages(chat_id)
+            user_data[chat_id] = {"messages": [], "step": None}
+            msg = await message.answer("✅ Ваша заявка на консультацію прийнята! Незабаром з вами зв'яжеться наш консультант.", reply_markup=get_main_menu())
+            await add_message(chat_id, msg)
+        except Exception as e:
+            msg = await message.answer(f"❗ Помилка надсилання заявки: {e}")
+            await add_message(chat_id, msg)
 
-    consult_text = (
-        f"Нова заявка на консультацію!\n"
-        f"ПІБ: {name}\n"
-        f"Телефон: {phone}"
-    )
-
-    await bot.send_message(CHAT_ID, consult_text)
-    await delete_all_messages(chat_id)
-
-    msg = await message.answer(
-        "✅ Дякуємо! Ваш запит на консультацію прийнято. Скоро з вами зв'яжеться наш оператор.",
-        reply_markup=get_main_menu()
-    )
-    await add_message(chat_id, msg)
-
-    user_data[chat_id]["step"] = None
-
-# === Обработка команды Завершити ===
+# === Обработка "Завершити" в любом месте (главное меню) ===
 @dp.message_handler(lambda m: m.text == "Завершити")
 async def finish_handler(message: types.Message):
     chat_id = message.chat.id
