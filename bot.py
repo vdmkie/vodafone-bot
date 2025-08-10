@@ -63,7 +63,6 @@ async def start(message: types.Message):
         "👉 *Домашній інтернет + TV Start - 125грн/міс.*\n" "*акійна абонплата  до 01.01.2026, далі 300 грн/міс.*\n\n" 
         "👉 *Домашній інтернет + TV Pro - 125грн/міс.*\n" "*акійна абонплата  до 01.01.2026, далі 325 грн/міс.*\n\n" 
         "👉 *Домашній інтернет + TV Max - 125грн/міс.*\n" "*акійна абонплата  до 01.01.2026*, далі 375 грн/міс.*\n\n"
-
         "Оберіть дію з меню нижче 👇",
         reply_markup=markup,
         parse_mode="Markdown"
@@ -196,22 +195,35 @@ async def check_coverage(message: types.Message):
 
 # --- Завершити ---
 async def reset_user_state(message: types.Message):
-    for msg_id in user_data.get(message.chat.id, {}).get("messages", []):
-        try:
-            await bot.delete_message(message.chat.id, msg_id)
-        except:
-            pass
-    user_data[message.chat.id] = {}
+    chat_id = message.chat.id
 
-    # Повертаємо стартове меню
+    # Удаляем сообщения бота (если есть)
+    for msg_id in user_data.get(chat_id, {}).get("messages", []):
+        try:
+            await bot.delete_message(chat_id, msg_id)
+        except Exception:
+            pass
+
+    # Удаляем сообщение пользователя (команду "Завершити")
+    try:
+        await bot.delete_message(chat_id, message.message_id)
+    except Exception:
+        pass
+
+    user_data[chat_id] = {}
+
+    # Отправляем кнопку "Старт"
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add("Залишити заявку", "Замовити консультацію")
-    markup.add("Перевірити покриття")
-    await message.answer("👋 Повертаємося до початку. Оберіть дію:", reply_markup=markup)
+    markup.add("Старт")
+    await message.answer("👋 Повертаємося до початку. Натисніть 'Старт' для початку.", reply_markup=markup)
 
 @dp.message_handler(lambda m: m.text == "Завершити")
 async def handle_finish(message: types.Message):
     await reset_user_state(message)
+
+@dp.message_handler(lambda m: m.text == "Старт")
+async def handle_start_button(message: types.Message):
+    await start(message)
 
 if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)
