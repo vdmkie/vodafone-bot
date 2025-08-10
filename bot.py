@@ -45,7 +45,7 @@ async def start(message: types.Message):
 
     photo = await bot.send_photo(
         message.chat.id,
-        "https://drive.google.com/file/d/1IKZE8Z3-NGfOBG_mg0EgBwceh58DNvKl/view"
+        "https://github.com/vdmkie/vodafone-bot/blob/main/%D0%94%D0%BE%D0%B1%D0%B0%D0%B2%D0%B8%D1%82%D1%8C%20%D0%9F%D0%BE%D0%B4%D0%B7%D0%B0%D0%B3%D0%BE%D0%BB%D0%BE_20250810_151721_0000.png"
     )
     user_data[message.chat.id]["messages"].append(photo.message_id)
 
