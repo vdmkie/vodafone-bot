@@ -27,7 +27,7 @@ TARIFFS = {
         "Домашній інтернет +TV Max (3 місяці безкоштовно, потім 375 грн/міс.)"
 }
 
-# --- Валидация полей ---
+# --- Валидация ---
 def is_valid_name(name):
     return bool(re.match(r"^[А-ЯІЇЄҐа-яіїєґ]+\s[А-ЯІЇЄҐа-яіїєґ]+\s[А-ЯІЇЄҐа-яіїєґ]+$", name.strip()))
 
@@ -67,15 +67,14 @@ async def start(message: types.Message):
     )
     user_data[message.chat.id]["messages"].append(msg.message_id)
 
-# --- Початок заявки ---
-@dp.message_handler(lambda message: message.text == "Залишити заявку")
+# --- Заявка ---
+@dp.message_handler(lambda m: m.text == "Залишити заявку")
 async def request_name(message: types.Message):
     user_data[message.chat.id] = {"step": "waiting_for_name", "messages": []}
     msg = await message.answer("Введіть ПІБ (наприклад: Тарасов Тарас Тарасович):")
     user_data[message.chat.id]["messages"].append(msg.message_id)
 
-# --- Обробка ПІБ ---
-@dp.message_handler(lambda message: user_data.get(message.chat.id, {}).get("step") == "waiting_for_name")
+@dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "waiting_for_name")
 async def handle_name(message: types.Message):
     if not is_valid_name(message.text):
         msg = await message.answer("❗ Невірний формат ПІБ. Приклад: Тарасов Тарас Тарасович")
@@ -86,8 +85,7 @@ async def handle_name(message: types.Message):
     msg = await message.answer("✅ Прийнято. Введіть адресу підключення (місто, вулиця, будинок, квартира):")
     user_data[message.chat.id]["messages"].append(msg.message_id)
 
-# --- Обробка адреси ---
-@dp.message_handler(lambda message: user_data.get(message.chat.id, {}).get("step") == "waiting_for_address")
+@dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "waiting_for_address")
 async def handle_address(message: types.Message):
     if not is_valid_address(message.text):
         msg = await message.answer("❗ Невірний формат адреси. Спробуйте ще раз.")
@@ -98,8 +96,7 @@ async def handle_address(message: types.Message):
     msg = await message.answer("✅ Прийнято. Введіть номер телефону (починаючи з 380...):")
     user_data[message.chat.id]["messages"].append(msg.message_id)
 
-# --- Обробка телефону ---
-@dp.message_handler(lambda message: user_data.get(message.chat.id, {}).get("step") == "waiting_for_phone")
+@dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "waiting_for_phone")
 async def handle_phone(message: types.Message):
     if not is_valid_phone(message.text):
         msg = await message.answer("❗ Невірний формат телефону. Спробуйте ще раз.")
@@ -114,8 +111,7 @@ async def handle_phone(message: types.Message):
     msg = await message.answer("Оберіть тариф:", reply_markup=markup)
     user_data[message.chat.id]["messages"].append(msg.message_id)
 
-# --- Обробка тарифу ---
-@dp.message_handler(lambda message: user_data.get(message.chat.id, {}).get("step") == "waiting_for_tariff")
+@dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "waiting_for_tariff")
 async def handle_tariff(message: types.Message):
     if message.text not in TARIFFS:
         msg = await message.answer("❗ Оберіть тариф зі списку.")
@@ -133,20 +129,20 @@ async def handle_tariff(message: types.Message):
     await bot.send_message(CHAT_ID, text)
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add("Завершити", "Замовити зворотній зв'язок")
+    markup.add("Завершити")
 
-    msg = await message.answer("✅ Заявку надіслано. Оберіть дію:", reply_markup=markup)
+    msg = await message.answer("✅ Заявку надіслано. Натисніть 'Завершити' щоб повернутися до меню.", reply_markup=markup)
     user_data[message.chat.id]["messages"].append(msg.message_id)
     user_data[message.chat.id]["step"] = "completed"
 
-# --- Замовити консультацію ---
-@dp.message_handler(lambda message: message.text == "Замовити консультацію")
+# --- Консультація ---
+@dp.message_handler(lambda m: m.text == "Замовити консультацію")
 async def request_consult_name(message: types.Message):
     user_data[message.chat.id] = {"step": "consult_name", "messages": []}
     msg = await message.answer("Введіть ПІБ (наприклад: Тарасов Тарас Тарасович):")
     user_data[message.chat.id]["messages"].append(msg.message_id)
 
-@dp.message_handler(lambda message: user_data.get(message.chat.id, {}).get("step") == "consult_name")
+@dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "consult_name")
 async def handle_consult_name(message: types.Message):
     if not is_valid_name(message.text):
         msg = await message.answer("❗ Невірний формат ПІБ. Приклад: Тарасов Тарас Тарасович")
@@ -157,7 +153,7 @@ async def handle_consult_name(message: types.Message):
     msg = await message.answer("✅ Прийнято. Введіть номер телефону (починаючи з 380...):")
     user_data[message.chat.id]["messages"].append(msg.message_id)
 
-@dp.message_handler(lambda message: user_data.get(message.chat.id, {}).get("step") == "consult_phone")
+@dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "consult_phone")
 async def handle_consult_phone(message: types.Message):
     if not is_valid_phone(message.text):
         msg = await message.answer("❗ Невірний формат телефону. Спробуйте ще раз.")
@@ -173,23 +169,31 @@ async def handle_consult_phone(message: types.Message):
     )
     await bot.send_message(CHAT_ID, text)
 
-    await message.answer("✅ Ваш запит на консультацію надіслано! Ми зателефонуємо найближчим часом.")
-    await reset_user_state(message)
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add("Завершити")
+    msg = await message.answer("✅ Ваш запит на консультацію надіслано! Натисніть 'Завершити' щоб повернутися до меню.", reply_markup=markup)
+    user_data[message.chat.id]["messages"].append(msg.message_id)
 
 # --- Перевірити покриття ---
-@dp.message_handler(lambda message: message.text == "Перевірити покриття")
+@dp.message_handler(lambda m: m.text == "Перевірити покриття")
 async def check_coverage(message: types.Message):
-    markup = InlineKeyboardMarkup()
-    markup.add(
+    markup_url = InlineKeyboardMarkup()
+    markup_url.add(
         InlineKeyboardButton(
             text="Відкрити карту покриття 🌐",
             url="https://vodafone.ua/uk/internet-home/coverage"
         )
     )
-    await message.answer("🔍 Натисніть кнопку нижче, щоб перевірити покриття:", reply_markup=markup)
+    markup_finish = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup_finish.add("Завершити")
 
-# --- Завершення та очищення ---
-async def reset_user_state(message: types.Message, show_start=True):
+    msg1 = await message.answer("🔍 Натисніть кнопку нижче, щоб перевірити покриття:", reply_markup=markup_url)
+    msg2 = await message.answer("Коли закінчите — натисніть 'Завершити'", reply_markup=markup_finish)
+
+    user_data[message.chat.id] = {"messages": [msg1.message_id, msg2.message_id], "step": None}
+
+# --- Завершити ---
+async def reset_user_state(message: types.Message):
     for msg_id in user_data.get(message.chat.id, {}).get("messages", []):
         try:
             await bot.delete_message(message.chat.id, msg_id)
@@ -197,29 +201,13 @@ async def reset_user_state(message: types.Message, show_start=True):
             pass
     user_data[message.chat.id] = {}
 
-    if show_start:
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        markup.add("Залишити заявку", "Замовити консультацію")
-        markup.add("Перевірити покриття")
-        await message.answer("👋 Повертаємося до початку. Оберіть дію:", reply_markup=markup)
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add("Залишити заявку", "Замовити консультацію")
+    markup.add("Перевірити покриття")
+    await message.answer("👋 Повертаємося до початку. Оберіть дію:", reply_markup=markup)
 
-@dp.message_handler(lambda message: message.text == "Завершити")
+@dp.message_handler(lambda m: m.text == "Завершити")
 async def handle_finish(message: types.Message):
-    await reset_user_state(message)
-
-@dp.message_handler(lambda message: message.text == "Замовити зворотній зв'язок")
-async def handle_callback(message: types.Message):
-    data = user_data.get(message.chat.id, {})
-    if not all(k in data for k in ("name", "phone")):
-        await message.answer("❗ Дані відсутні. Почніть знову /start.")
-        return
-
-    text = (
-        "📞 Клієнт просить зворотній зв'язок:\n\n"
-        f"👤 ПІБ: {data['name']}\n"
-        f"📞 Телефон: {data['phone']}"
-    )
-    await bot.send_message(CHAT_ID, text)
     await reset_user_state(message)
 
 if __name__ == '__main__':
