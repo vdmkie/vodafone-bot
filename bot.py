@@ -40,7 +40,8 @@ def is_valid_name(name):
     return bool(re.match(r"^[А-ЯІЇЄҐа-яіїєґ]+\s[А-ЯІЇЄҐа-яіїєґ]+\s[А-ЯІЇЄҐа-яіїєґ]+$", name.strip()))
 
 def is_valid_address(address):
-    return bool(re.search(r"[а-яА-ЯіїІЇЄєҐґ]+\s.+\d+", address.strip()))
+    pattern = r"^[А-ЯІЇЄҐа-яіїєґ]+\s*,?\s*[\w\s\-\.]+\,?\s*\d+"
+    return bool(re.match(pattern, address.strip()))
 
 def is_valid_phone(phone):
     return bool(re.match(r"^380\d{9}$", phone.strip()))
@@ -60,7 +61,6 @@ async def delete_user_messages(chat_id):
             try:
                 await bot.delete_message(chat_id, msg_id)
             except Exception as e:
-                # Сообщение могло быть уже удалено или нельзя удалить
                 logging.warning(f"Не удалось удалить сообщение {msg_id}: {e}")
         user_data[chat_id]["messages"] = []
 
@@ -221,20 +221,17 @@ async def handle_tariff(message: types.Message):
         f"👤 ПІБ: {user_data[chat_id]['name']}\n"
         f"🏠 Адреса: {user_data[chat_id]['address']}\n"
         f"📞 Телефон: {user_data[chat_id]['phone']}\n"
-        f"📦 Тариф: {tariffs[message.text]}"
+        f"💳 Тариф: {user_data[chat_id]['tariff']}\n\n"
+        "Дякуємо, заявка прийнята!"
     )
     await bot.send_message(CHAT_ID, text)
-
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add("Завершити")
-
-    msg = await message.answer("✅ Заявку надіслано. Натисніть 'Завершити' щоб повернутися до меню.", reply_markup=markup)
+    msg = await message.answer("✅ Ваша заявка відправлена. Дякуємо!\n\nДля повернення в меню натисніть «Завершити».", reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True).add("Завершити"))
     add_message(chat_id, msg.message_id)
-    user_data[chat_id]["step"] = "completed"
+    user_data[chat_id]["step"] = None
 
 # --- Консультація ---
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "consult_name")
-async def handle_consult_name(message: types.Message):
+async def consult_name_handler(message: types.Message):
     chat_id = message.chat.id
     add_message(chat_id, message.message_id)
 
@@ -245,11 +242,11 @@ async def handle_consult_name(message: types.Message):
 
     user_data[chat_id]["name"] = message.text.strip()
     user_data[chat_id]["step"] = "consult_phone"
-    msg = await message.answer("✅ Прийнято. Введіть номер телефону (починаючи з 380...):")
+    msg = await message.answer("Введіть номер телефону (починаючи з 380...):")
     add_message(chat_id, msg.message_id)
 
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "consult_phone")
-async def handle_consult_phone(message: types.Message):
+async def consult_phone_handler(message: types.Message):
     chat_id = message.chat.id
     add_message(chat_id, message.message_id)
 
@@ -261,13 +258,49 @@ async def handle_consult_phone(message: types.Message):
     user_data[chat_id]["phone"] = message.text.strip()
 
     text = (
-        "📩 Запит на консультацію:\n\n"
+        "📩 Консультація від Рогальов Вадим:\n\n"
         f"👤 ПІБ: {user_data[chat_id]['name']}\n"
-        f"📞 Телефон: {user_data[chat_id]['phone']}\n"
+        f"📞 Телефон: {user_data[chat_id]['phone']}\n\n"
+        "Дякуємо, найближчим часом з вами зв'яжуться!"
     )
     await bot.send_message(CHAT_ID, text)
+    msg = await message.answer("✅ Ваш запит на консультацію прийнятий. Дякуємо!\n\nДля повернення в меню натисніть «Завершити».", reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True).add("Завершити"))
+    add_message(chat_id, msg.message_id)
+    user_data[chat_id]["step"] = None
 
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add("Завершити")
+# --- Проверка покрытия (пример) ---
+@dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "check_coverage")
+async def check_coverage_handler(message: types.Message):
+    chat_id = message.chat.id
+    add_message(chat_id, message.message_id)
 
-    msg = await message.answer("✅ Запит на консультацію надіслано. Натисніть 'Завершити' щоб повернутися до меню.", reply_markup=markup)
+    address = message.text.strip()
+    # Здесь можно реализовать реальную проверку. Пока что просто заглушка
+    if is_valid_address(address):
+        await message.answer(f"✅ За адресою '{address}' покриття є!")
+    else:
+        await message.answer(f"❗ Не вдалося знайти покриття за адресою '{address}'. Спробуйте іншу адресу.")
+    msg = await message.answer("Для повернення в меню натисніть «Завершити».", reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True).add("Завершити"))
+    add_message(chat_id, msg.message_id)
+    user_data[chat_id]["step"] = None
+
+# --- Завершити / возврат в меню ---
+@dp.message_handler(lambda m: m.text == "Завершити")
+async def finish_handler(message: types.Message):
+    chat_id = message.chat.id
+    await delete_user_messages(chat_id)
+    user_data.pop(chat_id, None)
+    await send_main_menu(chat_id)
+
+# --- Неизвестные сообщения ---
+@dp.message_handler()
+async def unknown_message_handler(message: types.Message):
+    chat_id = message.chat.id
+    if user_data.get(chat_id, {}).get("step") is None:
+        await message.answer("Будь ласка, оберіть дію з меню нижче.")
+        await send_main_menu(chat_id)
+    else:
+        await message.answer("Будь ласка, дотримуйтесь інструкцій бота.")
+
+if __name__ == '__main__':
+    executor.start_polling(dp, skip_updates=True)
