@@ -45,7 +45,7 @@ async def start(message: types.Message):
 
     photo = await bot.send_photo(
         chat_id,
-        "https://github.com/vdmkie/vodafone-bot/blob/main/IMG_20250810_211102.png?raw=true"
+        "https://https://github.com/vdmkie/vodafone-bot/blob/main/%D0%B0%D0%BA%D1%86%D0%B8%D1%8F.png?raw=true"
     )
     user_data[chat_id]["messages"].append(photo.message_id)
 
