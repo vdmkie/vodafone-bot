@@ -111,7 +111,7 @@ async def start(message: types.Message):
     add_message(chat_id, msg.message_id)
 
 # --- Общий обработчик кнопок запуска процессов ---
-@dp.message_handler(lambda m: m.text in ["Залишити заявку", "Промо-код", "Замовити консультацію", "Перевірити покриття"])
+@dp.message_handler(lambda m: m.text in ["Замовити підключення", "Промо-код", "Замовити консультацію", "Перевірити покриття"])
 async def start_process(message: types.Message):
     chat_id = message.chat.id
     await delete_user_messages(chat_id)
