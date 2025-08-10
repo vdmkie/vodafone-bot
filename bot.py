@@ -62,7 +62,7 @@ async def start(message: types.Message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("Залишити заявку", "Замовити консультацію")
     markup.add("Перевірити покриття")
-    markup.add("Промо-код")  # Добавлена новая кнопка
+    markup.add("Промо-код")
 
     photo = await bot.send_photo(
         chat_id,
@@ -88,7 +88,7 @@ async def start(message: types.Message):
         parse_mode="Markdown"
     )
     add_message(chat_id, msg.message_id)
-    add_message(chat_id, message.message_id)  # Добавляем сообщение пользователя
+    add_message(chat_id, message.message_id)
 
 # --- Обработка промо-кода ---
 @dp.message_handler(lambda m: m.text == "Промо-код")
@@ -159,7 +159,6 @@ async def handle_phone(message: types.Message):
     user_data[chat_id]["step"] = "waiting_for_tariff"
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    # Выбор тарифов зависит от промо
     tariffs = PROMO_TARIFFS if user_data[chat_id].get("promo") else TARIFFS
     for tariff in tariffs:
         markup.add(tariff)
@@ -222,4 +221,49 @@ async def handle_consult_name(message: types.Message):
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "consult_phone")
 async def handle_consult_phone(message: types.Message):
     chat_id = message.chat.id
-    add_message_
+    add_message(chat_id, message.message_id)
+
+    if not is_valid_phone(message.text):
+        msg = await message.answer("❗ Невірний формат телефону. Спробуйте ще раз.")
+        add_message(chat_id, msg.message_id)
+        return
+
+    user_data[chat_id]["phone"] = message.text.strip()
+
+    text = (
+        "📩 Запит на консультацію:\n\n"
+        f"👤 ПІБ: {user_data[chat_id]['name']}\n"
+        f"📞 Телефон: {user_data[chat_id]['phone']}\n"
+    )
+    await bot.send_message(CHAT_ID, text)
+
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add("Завершити")
+
+    msg = await message.answer("✅ Запит на консультацію надіслано. Натисніть 'Завершити' щоб повернутися до меню.", reply_markup=markup)
+    add_message(chat_id, msg.message_id)
+    user_data[chat_id]["step"] = "completed"
+
+# --- Завершити ---
+@dp.message_handler(lambda m: m.text == "Завершити")
+async def finish(message: types.Message):
+    chat_id = message.chat.id
+    # Очистка данных пользователя
+    user_data.pop(chat_id, None)
+
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add("Залишити заявку", "Замовити консультацію")
+    markup.add("Перевірити покриття")
+    markup.add("Промо-код")
+
+    msg = await message.answer("🔄 Меню оновлено. Оберіть дію:", reply_markup=markup)
+    add_message(chat_id, msg.message_id)
+
+# --- Обработка других сообщений ---
+@dp.message_handler()
+async def default_handler(message: types.Message):
+    chat_id = message.chat.id
+    await message.answer("Будь ласка, оберіть дію з меню нижче або натисніть /start.")
+
+if __name__ == '__main__':
+    executor.start_polling(dp, skip_updates=True)
