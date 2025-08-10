@@ -24,6 +24,17 @@ TARIFFS = {
         "Домашній інтернет +TV Max (125грн/міс. до 26 року)"
 }
 
+PROMO_TARIFFS = {
+    "Домашній інтернет -0грн/6міс.\n(6 місяців безкоштовно, потім 250 грн/міс.)":
+        "Домашній інтернет (0грн/6міс.)",
+    "Домашній інтернет +TV Start - 0грн/6міс.\n(6 місяців безкоштовно, потім 300 грн/міс.)":
+        "Домашній інтернет +TV Start (0грн/6міс.)",
+    "Домашній інтернет +TV Pro - 0грн/6міс.\n(6 місяців безкоштовно, потім 325 грн/міс.)":
+        "Домашній інтернет +TV Pro (0грн/6міс.)",
+    "Домашній інтернет +TV Max - 0грн/6міс.\n(6 місяців безкоштовно, потім 375 грн/міс.)":
+        "Домашній інтернет +TV Max (0грн/6міс)"
+}
+
 # --- Валидация ---
 def is_valid_name(name):
     return bool(re.match(r"^[А-ЯІЇЄҐа-яіїєґ]+\s[А-ЯІЇЄҐа-яіїєґ]+\s[А-ЯІЇЄҐа-яіїєґ]+$", name.strip()))
@@ -51,6 +62,7 @@ async def start(message: types.Message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("Залишити заявку", "Замовити консультацію")
     markup.add("Перевірити покриття")
+    markup.add("Промо-код")  # Добавлена новая кнопка
 
     photo = await bot.send_photo(
         chat_id,
@@ -78,16 +90,31 @@ async def start(message: types.Message):
     add_message(chat_id, msg.message_id)
     add_message(chat_id, message.message_id)  # Добавляем сообщение пользователя
 
-# --- Заявка ---
-@dp.message_handler(lambda m: m.text == "Залишити заявку")
-async def request_name(message: types.Message):
+# --- Обработка промо-кода ---
+@dp.message_handler(lambda m: m.text == "Промо-код")
+async def promo_request(message: types.Message):
     chat_id = message.chat.id
-    user_data[chat_id] = {"step": "waiting_for_name", "messages": []}
+    user_data[chat_id] = {"step": "waiting_for_promo", "messages": []}
     add_message(chat_id, message.message_id)
 
-    msg = await message.answer("Введіть ПІБ (наприклад: Тарасов Тарас Тарасович):")
+    msg = await message.answer("Введіть промо-код:")
     add_message(chat_id, msg.message_id)
 
+@dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "waiting_for_promo")
+async def promo_code_handler(message: types.Message):
+    chat_id = message.chat.id
+    add_message(chat_id, message.message_id)
+
+    if message.text.strip().lower() == "vdmkie":
+        user_data[chat_id]["promo"] = True
+        user_data[chat_id]["step"] = "waiting_for_name"
+        msg = await message.answer("✅ Промо-код прийнято! Введіть ПІБ (наприклад: Тарасов Тарас Тарасович):")
+        add_message(chat_id, msg.message_id)
+    else:
+        msg = await message.answer("❗ Невірний промо-код. Спробуйте ще раз або натисніть 'Завершити' для виходу.")
+        add_message(chat_id, msg.message_id)
+
+# --- Заявка ---
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "waiting_for_name")
 async def handle_name(message: types.Message):
     chat_id = message.chat.id
@@ -132,7 +159,9 @@ async def handle_phone(message: types.Message):
     user_data[chat_id]["step"] = "waiting_for_tariff"
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    for tariff in TARIFFS:
+    # Выбор тарифов зависит от промо
+    tariffs = PROMO_TARIFFS if user_data[chat_id].get("promo") else TARIFFS
+    for tariff in tariffs:
         markup.add(tariff)
     msg = await message.answer("Оберіть тариф:", reply_markup=markup)
     add_message(chat_id, msg.message_id)
@@ -142,7 +171,8 @@ async def handle_tariff(message: types.Message):
     chat_id = message.chat.id
     add_message(chat_id, message.message_id)
 
-    if message.text not in TARIFFS:
+    tariffs = PROMO_TARIFFS if user_data[chat_id].get("promo") else TARIFFS
+    if message.text not in tariffs:
         msg = await message.answer("❗ Оберіть тариф зі списку.")
         add_message(chat_id, msg.message_id)
         return
@@ -153,7 +183,7 @@ async def handle_tariff(message: types.Message):
         f"👤 ПІБ: {user_data[chat_id]['name']}\n"
         f"🏠 Адреса: {user_data[chat_id]['address']}\n"
         f"📞 Телефон: {user_data[chat_id]['phone']}\n"
-        f"📦 Тариф: {TARIFFS[message.text]}"
+        f"📦 Тариф: {tariffs[message.text]}"
     )
     await bot.send_message(CHAT_ID, text)
 
@@ -192,82 +222,4 @@ async def handle_consult_name(message: types.Message):
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "consult_phone")
 async def handle_consult_phone(message: types.Message):
     chat_id = message.chat.id
-    add_message(chat_id, message.message_id)
-
-    if not is_valid_phone(message.text):
-        msg = await message.answer("❗ Невірний формат телефону. Спробуйте ще раз.")
-        add_message(chat_id, msg.message_id)
-        return
-
-    user_data[chat_id]["phone"] = message.text.strip()
-
-    text = (
-        "📞 Запит на консультацію:\n\n"
-        f"👤 ПІБ: {user_data[chat_id]['name']}\n"
-        f"📞 Телефон: {user_data[chat_id]['phone']}"
-    )
-    await bot.send_message(CHAT_ID, text)
-
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add("Завершити")
-    msg = await message.answer("✅ Ваш запит на консультацію надіслано! Натисніть 'Завершити' щоб повернутися до меню.", reply_markup=markup)
-    add_message(chat_id, msg.message_id)
-    user_data[chat_id]["step"] = "completed"
-
-# --- Перевірити покриття ---
-@dp.message_handler(lambda m: m.text == "Перевірити покриття")
-async def check_coverage(message: types.Message):
-    chat_id = message.chat.id
-    add_message(chat_id, message.message_id)
-
-    markup_url = types.InlineKeyboardMarkup()
-    markup_url.add(
-        types.InlineKeyboardButton(
-            text="Відкрити карту покриття 🌐",
-            url="https://www.google.com/maps/d/u/0/viewer?mid=1T0wyMmx7jf99vNKMX9qBkqxPnefPbnY&ll=50.45869537257289%2C30.529932392320312&z=11"
-        )
-    )
-    markup_finish = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup_finish.add("Завершити")
-
-    msg = await message.answer("🔍 Натисніть кнопку нижче, щоб перевірити покриття:", reply_markup=markup_url)
-    add_message(chat_id, msg.message_id)
-
-    await message.answer("Коли закінчите — натисніть 'Завершити'", reply_markup=markup_finish)
-
-# --- Завершити ---
-async def reset_user_state(message: types.Message):
-    chat_id = message.chat.id
-
-    # Удаляем все сообщения, сохранённые для данного пользователя
-    for msg_id in user_data.get(chat_id, {}).get("messages", []):
-        try:
-            await bot.delete_message(chat_id, msg_id)
-        except Exception:
-            pass
-
-    # Удаляем сообщение пользователя (команду "Завершити") отдельно на всякий случай
-    try:
-        await bot.delete_message(chat_id, message.message_id)
-    except Exception:
-        pass
-
-    user_data[chat_id] = {}
-
-    # Отправляем кнопку "Старт"
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add("Старт")
-    await message.answer("👋 Повертаємося до початку. Натисніть 'Старт' для початку.", reply_markup=markup)
-
-@dp.message_handler(lambda m: m.text == "Завершити")
-async def handle_finish(message: types.Message):
-    add_message(message.chat.id, message.message_id)
-    await reset_user_state(message)
-
-@dp.message_handler(lambda m: m.text == "Старт")
-async def handle_start_button(message: types.Message):
-    add_message(message.chat.id, message.message_id)
-    await start(message)
-
-if __name__ == '__main__':
-    executor.start_polling(dp, skip_updates=True)
+    add_message_
