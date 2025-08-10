@@ -40,6 +40,7 @@ def is_valid_phone(phone):
 async def start(message: types.Message):
     user_data[message.chat.id] = {"messages": [], "step": None}
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add("Старт")  # Кнопка Старт
     markup.add("Залишити заявку", "Замовити консультацію")
     markup.add("Перевірити покриття")
 
@@ -76,6 +77,11 @@ async def start(message: types.Message):
         parse_mode="Markdown"
     )
     user_data[message.chat.id]["messages"].append(msg.message_id)
+
+# --- Обработчик кнопки "Старт" ---
+@dp.message_handler(lambda m: m.text == "Старт")
+async def start_by_text(message: types.Message):
+    await start(message)
 
 # --- Заявка ---
 @dp.message_handler(lambda m: m.text == "Залишити заявку")
@@ -212,6 +218,7 @@ async def reset_user_state(message: types.Message):
     user_data[message.chat.id] = {}
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add("Старт")
     markup.add("Залишити заявку", "Замовити консультацію")
     markup.add("Перевірити покриття")
     await message.answer("👋 Повертаємося до початку. Оберіть дію:", reply_markup=markup)
