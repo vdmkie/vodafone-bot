@@ -60,7 +60,7 @@ async def delete_all_messages(chat_id):
 
 def get_main_menu():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add("Залишити заявку", "Замовити консультацію")
+    markup.add("Замовити підключення", "Замовити консультацію")
     markup.add("Перевірити покриття")
     markup.add("Промо-код")
     return markup
@@ -97,14 +97,14 @@ async def start(message: types.Message):
     await add_message(chat_id, message)
 
 # === Обработка выбора из главного меню ===
-@dp.message_handler(lambda m: m.text in ["Залишити заявку", "Промо-код", "Замовити консультацію", "Перевірити покриття"])
+@dp.message_handler(lambda m: m.text in ["Замовити підключення", "Промо-код", "Замовити консультацію", "Перевірити покриття"])
 async def menu_handler(message: types.Message):
     chat_id = message.chat.id
     user_data[chat_id] = {"messages": [], "step": None}
 
     await add_message(chat_id, message)
 
-    if message.text == "Залишити заявку":
+    if message.text == "Замовити підключення":
         user_data[chat_id]["step"] = "waiting_for_name"
         msg = await message.answer("Введіть ПІБ (наприклад: Тарасов Тарас Тарасович):", reply_markup=types.ReplyKeyboardRemove())
         await add_message(chat_id, msg)
@@ -121,24 +121,21 @@ async def menu_handler(message: types.Message):
 
     elif message.text == "Перевірити покриття":
         user_data[chat_id]["step"] = "check_coverage"
-        msg = await message.answer("Введіть адресу для перевірки покриття:", reply_markup=types.ReplyKeyboardRemove())
-        await add_message(chat_id, msg)
+        await handle_coverage(message)
 
-# === Обработка "Перевірити покриття" ===
+# === Обработка "Перевірити покриття" - отправка ссылки ===
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "check_coverage")
 async def handle_coverage(message: types.Message):
     chat_id = message.chat.id
     await add_message(chat_id, message)
 
-    # Здесь можно вставить реальную логику проверки по адресу
-    # Для примера просто ответим позитивно
-    coverage_info = f"Покриття за адресою '{message.text.strip()}' є доступним ✅"
-
-    msg = await message.answer(coverage_info)
-
+    coverage_url = "https://www.google.com/maps/d/u/0/viewer?mid=1T0wyMmx7jf99vNKMX9qBkqxPnefPbnY&ll=50.45869537257289%2C30.529932392320312&z=11"
+    msg = await message.answer(
+        f"Перевірте покриття за посиланням:\n{coverage_url}",
+        disable_web_page_preview=True
+    )
     await add_message(chat_id, msg)
 
-    # Предлагаем завершить
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("Завершити")
     user_data[chat_id]["step"] = "completed"
@@ -160,7 +157,7 @@ async def promo_code_handler(message: types.Message):
         msg = await message.answer("❗ Невірний промо-код. Спробуйте ще раз або натисніть 'Завершити' для виходу.")
         await add_message(chat_id, msg)
 
-# === Обработка "Залишити заявку" и связанной логики ===
+# === Обработка "Замовити підключення" и связанной логики ===
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "waiting_for_name")
 async def handle_name(message: types.Message):
     chat_id = message.chat.id
@@ -231,17 +228,12 @@ async def handle_tariff(message: types.Message):
         f"📦 Тариф: {tariffs[message.text]}"
     )
     await bot.send_message(CHAT_ID, text)
-
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add("Завершити")
-
-    msg = await message.answer("✅ Заявку надіслано. Натисніть 'Завершити' щоб повернутися до меню.", reply_markup=markup)
-    await add_message(chat_id, msg)
-    user_data[chat_id]["step"] = "completed"
+    await message.answer("✅ Заявка на підключення прийнята! Очікуйте на дзвінок.", reply_markup=get_main_menu())
+    user_data[chat_id] = {"messages": [], "step": None}
 
 # === Обработка "Замовити консультацію" ===
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "consult_name")
-async def handle_consult_name(message: types.Message):
+async def consult_name_handler(message: types.Message):
     chat_id = message.chat.id
     await add_message(chat_id, message)
 
@@ -250,13 +242,13 @@ async def handle_consult_name(message: types.Message):
         await add_message(chat_id, msg)
         return
 
-    user_data[chat_id]["name"] = message.text.strip()
+    user_data[chat_id]["consult_name"] = message.text.strip()
     user_data[chat_id]["step"] = "consult_phone"
-    msg = await message.answer("✅ Прийнято. Введіть номер телефону (починаючи з 380...):")
+    msg = await message.answer("Введіть номер телефону для консультації (починаючи з 380...):")
     await add_message(chat_id, msg)
 
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "consult_phone")
-async def handle_consult_phone(message: types.Message):
+async def consult_phone_handler(message: types.Message):
     chat_id = message.chat.id
     await add_message(chat_id, message)
 
@@ -265,29 +257,25 @@ async def handle_consult_phone(message: types.Message):
         await add_message(chat_id, msg)
         return
 
-    user_data[chat_id]["phone"] = message.text.strip()
+    user_data[chat_id]["consult_phone"] = message.text.strip()
 
     text = (
-        "📩 Замовлення консультації:\n\n"
-        f"👤 ПІБ: {user_data[chat_id]['name']}\n"
-        f"📞 Телефон: {user_data[chat_id]['phone']}"
+        "📩 Запит на консультацію:\n\n"
+        f"👤 ПІБ: {user_data[chat_id]['consult_name']}\n"
+        f"📞 Телефон: {user_data[chat_id]['consult_phone']}"
     )
     await bot.send_message(CHAT_ID, text)
+    await message.answer("✅ Запит на консультацію прийнято! Очікуйте на дзвінок.", reply_markup=get_main_menu())
+    user_data[chat_id] = {"messages": [], "step": None}
 
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add("Завершити")
-
-    msg = await message.answer("✅ Консультацію замовлено. Натисніть 'Завершити' щоб повернутися до меню.", reply_markup=markup)
-    await add_message(chat_id, msg)
-    user_data[chat_id]["step"] = "completed"
-
-# === Обработка кнопки "Завершити" ===
+# === Обработка "Завершити" ===
 @dp.message_handler(lambda m: m.text == "Завершити")
 async def finish_handler(message: types.Message):
     chat_id = message.chat.id
-    await delete_all_messages(chat_id)
+    await add_message(chat_id, message)
+
+    await message.answer("Повертаємось до головного меню.", reply_markup=get_main_menu())
     user_data[chat_id] = {"messages": [], "step": None}
-    await message.answer("Дякуємо! Оберіть дію з меню 👇", reply_markup=get_main_menu())
 
 if __name__ == '__main__':
     executor.start_polling(dp)
