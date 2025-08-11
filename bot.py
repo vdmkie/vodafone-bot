@@ -14,13 +14,13 @@ dp = Dispatcher(bot)
 user_data = {}
 
 TARIFFS = {
-    "Домашній інтернет -125грн/міс.\n(акційна вартість тарифу до 31.12.2026р., потім 250 грн/міс.)":
+    "Домашній інтернет -125грн/міс.\n(аакція до 31.12.2026р., потім 250 грн/міс.)":
         "Домашній інтернет (125грн/міс. до кінця 26 року)",
-    "Домашній інтернет +TV Start - 125грн/міс.\n(акційна вартість тарифу до 31.12.2026р., потім 300 грн/міс.)":
+    "Домашній інтернет +TV Start - 125грн/міс.\n(акція до 31.12.2026р., потім 300 грн/міс.)":
         "Домашній інтернет +TV Start (125грн/міс. до кінця 26 року)",
-    "Домашній інтернет +TV Pro - 125грн/міс.\n(акційна вартість тарифу до 31.12.2026р., потім 325 грн/міс.)":
+    "Домашній інтернет +TV Pro - 125грн/міс.\n(акція до 31.12.2026р., потім 325 грн/міс.)":
         "Домашній інтернет +TV Pro (125грн/міс. до кінця 26 року)",
-    "Домашній інтернет +TV Max - 125грн/міс.\n(акційна вартість тарифу до 31.12.2026р., потім 375 грн/міс.)":
+    "Домашній інтернет +TV Max - 125грн/міс.\n(акція до 31.12.2026р., потім 375 грн/міс.)":
         "Домашній інтернет +TV Max (125грн/міс. до кінця 26 року)"
 }
 
@@ -303,12 +303,12 @@ async def confirmation_handler(message: types.Message):
             f"Адреса: {data['address']}\n"
             f"Телефон: {data['phone']}\n"
             f"Тариф: {tariff_for_send}\n"
-            f"{'(З промо-кодом)' if promo else ''}"
+            f"{'(прихований ТП)' if promo else ''}"
         )
         await bot.send_message(CHAT_ID, text_to_send)
         await delete_all_messages(chat_id)
         user_data[chat_id] = {"messages": [], "step": None}
-        msg = await message.answer("Дякуємо! Ваша заявка прийнята.\nОбирайте дію з меню:", reply_markup=get_main_menu())
+        msg = await message.answer("Дякуємо! Ваша заявка прийнята.\nОберіть дію нижче:", reply_markup=get_main_menu())
         await add_message(chat_id, msg)
     else:
         msg = await message.answer("Будь ласка, оберіть 'Підтвердити' або 'Почати заново'.")
@@ -347,7 +347,7 @@ async def consult_handler(message: types.Message):
         await bot.send_message(CHAT_ID, text_to_send)
         await delete_all_messages(chat_id)
         user_data[chat_id] = {"messages": [], "step": None}
-        msg = await message.answer("Дякуємо! Заявку на консультацію прийнято.\nОбирайте дію з меню:", reply_markup=get_main_menu())
+        msg = await message.answer("Дякуємо! Заявку на консультацію прийнято.\nОберіть дію нижче:", reply_markup=get_main_menu())
         await add_message(chat_id, msg)
 
 # Обработка выбора города для покрытия
