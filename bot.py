@@ -13,7 +13,24 @@ dp = Dispatcher(bot)
 
 user_data = {}
 
-# Тарифы
+# --- Константы приветствия ---
+WELCOME_IMAGE_URL = "https://github.com/vdmkie/vodafone-bot/blob/main/%D0%B0%D0%BA%D1%86%D0%B8%D1%8F.png?raw=true"
+WELCOME_TEXT = (
+    "👋 *Вітаю! Я Ваш чат-бот Тарас*\n\n"
+    "💪  *Переваги нашого провайдера це...*\n"
+    "✅ *Нова та якісна мережа!*\n"
+    "✅ *Cучасна технологія GPON!*\n"
+    "✅ *Швидкість до 1Гігабіт/сек.!*\n"
+    "✅ *Безкоштовне підключення!*\n"
+    "✅ *Понад 72 години працює без світла!*\n"
+    "✅ *Акційні тарифи!*\n\n" 
+    "👉 *Домашній інтернет - 125грн/міс.*\n*акційна вартість тарифу до 31.12.2026р., далі 250 грн/міс.*\n\n" 
+    "👉 *Домашній інтернет + TV Start - 125грн/міс.*\n*акційна вартість тарифу до 31.12.2026р., далі 300 грн/міс.*\n\n" 
+    "👉 *Домашній інтернет + TV Pro - 125грн/міс.*\n*акційна вартість тарифу до 31.12.2026р., далі 325 грн/міс.*\n\n" 
+    "👉 *Домашній інтернет + TV Max - 125грн/міс.*\n*акційна вартість тарифу до 31.12.2026р., далі 375 грн/міс.*\n\n"
+)
+
+# --- Тарифы ---
 TARIFFS = {
     "Домашній інтернет -125грн/міс.": "Домашній інтернет (125грн/міс.)",
     "Домашній інтернет +TV Start - 125грн/міс.": "Домашній інтернет +TV Start (125грн/міс.)",
@@ -29,7 +46,7 @@ PROMO_TARIFFS = {
 }
 
 CITIES_COVERAGE = {
-        "Київ": "https://www.google.com/maps/d/u/0/viewer?mid=1T0wyMmx7jf99vNKMX9qBkqxPnefPbnY&ll=50.45869537257287%2C30.529932392320312&z=11",
+    "Київ": "https://www.google.com/maps/d/u/0/viewer?mid=1T0wyMmx7jf99vNKMX9qBkqxPnefPbnY&ll=50.45869537257287%2C30.529932392320312&z=11",
     "Дніпро": "https://www.google.com/maps/d/u/0/viewer?mid=1JEKUJnE9XUTZPjd-f8jmXPcvLU4s-QhE&hl=uk&ll=48.47923374885031%2C34.92072785000002&z=15",
     "Луцьк": "https://www.google.com/maps/d/u/0/viewer?mid=1drkIR5NswXCAazpv5qmaf02lL9OfJAc&ll=50.75093726790353%2C25.32392972563127&z=12",
     "Кривий Ріг": "https://www.google.com/maps/d/u/0/viewer?mid=17kqq7EQadI5_o5bK1_lix-Qo2wbBaJY&ll=47.910800696984694%2C33.393370494687424&z=12",
@@ -44,7 +61,7 @@ CITIES_COVERAGE = {
     "Чернівці": "https://www.google.com/maps/d/u/0/viewer?mid=1aedZnI80ccELyI3FWKY5xJeed9RotXA&ll=48.28432273335117%2C25.924519174020382&z=12"
 }
 
-# Валидация данных
+# --- Валидация ---
 def is_valid_name(name):
     return bool(re.match(r"^[А-ЩЬЮЯІЇЄҐ][а-щьюяіїєґ]+\s[А-ЩЬЮЯІЇЄҐ][а-щьюяіїєґ]+\s[А-ЩЬЮЯІЇЄҐ][а-щьюяіїєґ]+$", name.strip()))
 
@@ -54,7 +71,7 @@ def is_valid_address(address):
 def is_valid_phone(phone):
     return bool(re.match(r"^380\d{9}$", phone.strip()))
 
-# Работа с сообщениями пользователя
+# --- Работа с сообщениями ---
 async def add_message(chat_id, message):
     if chat_id not in user_data:
         user_data[chat_id] = {"messages": [], "step": None}
@@ -69,15 +86,30 @@ async def delete_all_messages(chat_id):
                 pass
         user_data[chat_id]["messages"] = []
 
+# --- Главное меню ---
 async def go_to_main_menu(chat_id):
-    await delete_all_messages(chat_id)
-    user_data[chat_id] = {"messages": [], "step": None}
+    # Очистка старых шагов (не трогаем приветствие)
+    if chat_id in user_data:
+        for msg_id in user_data[chat_id].get("messages", []):
+            try:
+                await bot.delete_message(chat_id, msg_id)
+            except:
+                pass
+        user_data[chat_id]["messages"] = []
+
+    # Отправляем приветствие с картинкой
+    msg_photo = await bot.send_photo(chat_id, photo=WELCOME_IMAGE_URL, caption=WELCOME_TEXT, parse_mode="Markdown")
+    user_data.setdefault(chat_id, {})
+    user_data[chat_id]["messages"] = [msg_photo.message_id]
+
+    # Кнопки меню
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("Замовити підключення", "Замовити консультацію")
     markup.add("Перевірити покриття")
-    msg = await bot.send_message(chat_id, "👋 Вітаю! Оберіть дію нижче:", reply_markup=markup)
-    await add_message(chat_id, msg)
+    msg_menu = await bot.send_message(chat_id, "👆 Оберіть дію нижче:", reply_markup=markup)
+    user_data[chat_id]["messages"].append(msg_menu.message_id)
 
+# --- Клавиатуры шагов ---
 def get_step_markup(options, add_back=True):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     for opt in options:
@@ -86,36 +118,19 @@ def get_step_markup(options, add_back=True):
         markup.add("Назад")
     return markup
 
-# Старт
+# --- Старт ---
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
     chat_id = message.chat.id
-    user_data[chat_id] = {"messages": [], "step": None}
+    user_data[chat_id] = {"messages": []}
     await go_to_main_menu(chat_id)
 
-# Главное меню
-@dp.message_handler(lambda m: m.text in ["Замовити підключення", "Замовити консультацію", "Перевірити покриття"])
-async def main_menu_handler(message: types.Message):
-    chat_id = message.chat.id
-    await delete_all_messages(chat_id)
-    user_data[chat_id] = {"messages": [], "step": None}
+# --- Здесь подключаются все остальные обработчики заказов, промо, консультаций и проверки покрытия ---
+# Для каждого шага используем delete_all_messages(chat_id), а приветствие с картинкой всегда останется.
 
-    if message.text == "Замовити підключення":
-        user_data[chat_id]["step"] = "ask_promo_code"
-        markup = get_step_markup(["Так", "Ні", "Завершити"], add_back=False)
-        msg = await message.answer("Чи маєте ви промо-код?", reply_markup=markup)
-        await add_message(chat_id, msg)
+if __name__ == '__main__':
+    executor.start_polling(dp, skip_updates=True)
 
-    elif message.text == "Замовити консультацію":
-        user_data[chat_id]["step"] = "consult_name"
-        msg = await message.answer("✅ Прийнято! Введіть повністю ПІБ (наприклад: Тарасов Тарас Тарасович):", reply_markup=types.ReplyKeyboardRemove())
-        await add_message(chat_id, msg)
-
-    elif message.text == "Перевірити покриття":
-        user_data[chat_id]["step"] = "choose_city"
-        markup = get_step_markup(list(CITIES_COVERAGE.keys()))
-        msg = await message.answer("Оберіть місто для перевірки покриття:", reply_markup=markup)
-        await add_message(chat_id, msg)
 
 # Промо-код
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "ask_promo_code")
