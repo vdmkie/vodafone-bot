@@ -83,7 +83,8 @@ async def delete_all_messages(chat_id):
 def get_main_menu():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("Замовити підключення", "Замовити консультацію")
-    markup.add("Перевірити покриття", "Які канали входять до TV ?")
+    markup.add("Перевірити покриття")
+    markup.add("Які канали входять до TV ?")
     return markup
 
 # --- Старт ---
@@ -130,7 +131,7 @@ async def main_menu_handler(message: types.Message):
         user_data[chat_id]["step"] = "ask_promo_code"
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
         markup.add("Так", "Ні", "Завершити")
-        msg = await message.answer("Чи маєте ви промо-код?", reply_markup=markup)
+        msg = await message.answer("Чи маєте Ви промо-код?", reply_markup=markup)
         await add_message(chat_id, msg)
 
     elif message.text == "Замовити консультацію":
@@ -212,7 +213,7 @@ async def order_handler(message: types.Message):
 
     elif step == "waiting_for_address":
         if not is_valid_address(text):
-            msg = await message.answer("❗ Адреса занадто коротка або некоректна. Спробуйте ще раз:")
+            msg = await message.answer("❗ Адреса некоректна. Введіть ще раз у форматі (місто, вулиця, будинок, квартира):")
             await add_message(chat_id, msg)
             return
         user_data[chat_id]["address"] = text
@@ -237,10 +238,6 @@ async def order_handler(message: types.Message):
             markup.add(t)
         markup.add("Почати заново")
         summary = (
-            f"Перевірте правильність введених даних:\n\n"
-            f"ПІБ: {user_data[chat_id]['name']}\n"
-            f"Адреса: {user_data[chat_id]['address']}\n"
-            f"Телефон: {user_data[chat_id]['phone']}\n\n"
             f"Оберіть тариф:"
         )
         msg = await message.answer(summary, reply_markup=markup)
@@ -264,7 +261,7 @@ async def tariff_selection_handler(message: types.Message):
         return
 
     if text not in tariffs:
-        msg = await message.answer("Будь ласка, оберіть тариф зі списку або 'Почати заново'.")
+        msg = await message.answer("Будь ласка, оберіть тариф зі списку або натисніть 'Почати заново'.")
         await add_message(chat_id, msg)
         return
 
@@ -272,7 +269,7 @@ async def tariff_selection_handler(message: types.Message):
     user_data[chat_id]["step"] = "waiting_for_confirmation"
 
     summary = (
-        f"Підтвердіть заявку:\n\n"
+        f"Перевірте данні та підтвердіть заявку:\n\n"
         f"ПІБ: {user_data[chat_id]['name']}\n"
         f"Адреса: {user_data[chat_id]['address']}\n"
         f"Телефон: {user_data[chat_id]['phone']}\n"
@@ -305,12 +302,12 @@ async def confirmation_handler(message: types.Message):
         tariff_for_send = tariffs_dict.get(data["selected_tariff"], data["selected_tariff"])
 
         text_to_send = (
-            f"Нова заявка - автор Рогальов Вадим:\n\n"
-            f"ПІБ: {data['name']}\n"
-            f"Адреса: {data['address']}\n"
-            f"Телефон: {data['phone']}\n"
-            f"Тариф: {tariff_for_send}\n"
-            f"{'(прихований ТП)' if promo else ''}"
+            f"✅ Заявка на підключення:\n\n"
+            f"👤 ПІБ: {data['name']}\n"
+            f"🏠 Адреса: {data['address']}\n"
+            f"📞 Телефон: {data['phone']}\n"
+            f"📦 Тариф: {tariff_for_send}\n\n"
+            f"✏️ автор Рогальов Вадим"
         )
         await bot.send_message(CHAT_ID, text_to_send)
         await delete_all_messages(chat_id)
@@ -347,9 +344,9 @@ async def consult_handler(message: types.Message):
         # Отправка заявки консультанту
         data = user_data[chat_id]
         text_to_send = (
-            f"Заявка на консультацію:\n\n"
-            f"ПІБ: {data['consult_name']}\n"
-            f"Телефон: {data['consult_phone']}"
+            f"⁉️ Заявка на консультацію:\n\n"
+            f"👤 ПІБ: {data['consult_name']}\n"
+            f"📞 Телефон: {data['consult_phone']}"
         )
         await bot.send_message(CHAT_ID, text_to_send)
         await delete_all_messages(chat_id)
