@@ -51,20 +51,24 @@ CITIES_COVERAGE = {
     "Чернівці": "https://www.google.com/maps/d/u/0/viewer?mid=1aedZnI80ccELyI3FWKY5xJeed9RotXA&ll=48.28432273335117%2C25.924519174020382&z=12"
 }
 
+# --- Валидаторы ---
 def is_valid_name(name):
-    # Проверка: три слова, каждое с заглавной буквы, украинские буквы
     return bool(re.match(r"^[А-ЩЬЮЯІЇЄҐ][а-щьюяіїєґ]+\s[А-ЩЬЮЯІЇЄҐ][а-щьюяіїєґ]+\s[А-ЩЬЮЯІЇЄҐ][а-щьюяіїєґ]+$", name.strip()))
 
 def is_valid_address(address):
-    return len(address.strip()) >= 10  # Простая проверка длины
+    return len(address.strip()) >= 10
 
 def is_valid_phone(phone):
     return bool(re.match(r"^380\d{9}$", phone.strip()))
 
-async def add_message(chat_id, message):
+# --- Управление сообщениями ---
+async def add_message(chat_id, message, static=False):
     if chat_id not in user_data:
-        user_data[chat_id] = {"messages": [], "step": None}
-    user_data[chat_id]["messages"].append(message.message_id)
+        user_data[chat_id] = {"messages": [], "static_messages": [], "step": None}
+    if static:
+        user_data[chat_id]["static_messages"].append(message.message_id)
+    else:
+        user_data[chat_id]["messages"].append(message.message_id)
 
 async def delete_all_messages(chat_id):
     if chat_id in user_data:
@@ -75,12 +79,14 @@ async def delete_all_messages(chat_id):
                 pass
         user_data[chat_id]["messages"] = []
 
+# --- Главное меню ---
 def get_main_menu():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("Замовити підключення", "Замовити консультацію")
     markup.add("Перевірити покриття")
     return markup
 
+# --- Старт ---
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
     chat_id = message.chat.id
@@ -108,7 +114,7 @@ async def start(message: types.Message):
         parse_mode="Markdown"
     )
     await add_message(chat_id, msg, static=True)
-    await add_message(chat_id, message)  # обычное сообщение пользователя
+    await add_message(chat_id, message) 
 
 
 # Обработка главного меню
