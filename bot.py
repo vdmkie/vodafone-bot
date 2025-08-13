@@ -83,7 +83,7 @@ async def delete_all_messages(chat_id):
 def get_main_menu():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("Замовити підключення", "Замовити консультацію")
-    markup.add("Перевірити покриття")
+    markup.add("Перевірити покриття", "Які канали входять до TV ?")
     return markup
 
 # --- Старт ---
@@ -410,6 +410,36 @@ async def finish_handler(message: types.Message):
     user_data[chat_id] = {"messages": [], "step": None}
     msg = await message.answer("Обробка завершена. Оберіть дію з меню:", reply_markup=get_main_menu())
     await add_message(chat_id, msg)
+
+@dp.message_handler(lambda m: m.text == "Які канали входять до TV ?")
+async def tv_channels_handler(message: types.Message):
+    chat_id = message.chat.id
+    await add_message(chat_id, message)
+    
+    pdf_url = "https://github.com/vdmkie/vodafone-bot/blob/main/vf_tv.pdf?raw=true"
+    msg = await bot.send_document(chat_id, pdf_url)
+    await add_message(chat_id, msg)
+    
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    markup.add("Назад")
+    user_data[chat_id]["step"] = "tv_done"
+    msg2 = await message.answer("Натисніть 'Назад', щоб повернутися в меню.", reply_markup=markup)
+    await add_message(chat_id, msg2)
+
+@dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "tv_done")
+async def tv_done_handler(message: types.Message):
+    chat_id = message.chat.id
+    text = message.text.strip()
+    await add_message(chat_id, message)
+
+    if text == "Назад":
+        await delete_all_messages(chat_id)
+        user_data[chat_id] = {"messages": [], "step": None}
+        msg = await message.answer("Повернулись в головне меню.", reply_markup=get_main_menu())
+        await add_message(chat_id, msg)
+    else:
+        msg = await message.answer("Натисніть 'Назад' щоб повернутися в меню.")
+        await add_message(chat_id, msg)
 
 if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)
