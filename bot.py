@@ -84,11 +84,11 @@ def get_main_menu():
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
     chat_id = message.chat.id
-    user_data[chat_id] = {"messages": [], "step": None}
+    user_data[chat_id] = {"messages": [], "static_messages": [], "step": None}
 
     photo_url = "https://github.com/vdmkie/vodafone-bot/blob/main/%D0%B0%D0%BA%D1%86%D0%B8%D1%8F.png?raw=true"
     photo = await bot.send_photo(chat_id, photo_url)
-    await add_message(chat_id, photo)
+    await add_message(chat_id, photo, static=True)
 
     msg = await message.answer(
         "👋 *Вітаю! Я Ваш чат-бот Тарас*\n\n"
@@ -107,8 +107,9 @@ async def start(message: types.Message):
         reply_markup=get_main_menu(),
         parse_mode="Markdown"
     )
-    await add_message(chat_id, msg)
-    await add_message(chat_id, message)
+    await add_message(chat_id, msg, static=True)
+    await add_message(chat_id, message)  # обычное сообщение пользователя
+
 
 # Обработка главного меню
 @dp.message_handler(lambda m: m.text in ["Замовити підключення", "Замовити консультацію", "Перевірити покриття"])
