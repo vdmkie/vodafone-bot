@@ -25,9 +25,24 @@ PROMO_TARIFFS = {
     "Домашній інтернет +TV Max - 0грн/6міс.\n(6 місяців безкоштовно, потім 375 грн/міс.)": "Домашній інтернет +TV Max (0грн/6міс.)"
 }
 
+COVERAGE_LINKS = {
+    "Київ": "https://www.google.com/maps/d/u/0/viewer?mid=1T0wyMmx7jf99vNKMX9qBkqxPnefPbnY&ll=50.45869537257287%2C30.529932392320312&z=11",
+    "Дніпро": "https://www.google.com/maps/d/u/0/viewer?mid=1JEKUJnE9XUTZPjd-f8jmXPcvLU4s-QhE&hl=uk&ll=48.47923374885031%2C34.92072785000002&z=15",
+    "Луцьк": "https://www.google.com/maps/d/u/0/viewer?mid=1drkIR5NswXCAazpv5qmaf02lL9OfJAc&ll=50.75093726790353%2C25.32392972563127&z=12",
+    "Кривий Ріг": "https://www.google.com/maps/d/u/0/viewer?mid=17kqq7EQadI5_o5bK1_lix-Qo2wbBaJY&ll=47.910800696984694%2C33.393370494687424&z=12",
+    "Львів": "https://www.google.com/maps/d/u/0/viewer?mid=1CzE-aG4mdBTiu47Oj2u_lDDPDiNdwsAl&hl=uk&ll=49.78563613970314%2C24.064665899999994&z=17",
+    "Миколаїв": "https://www.google.com/maps/d/u/0/viewer?mid=17YcaZFCt8EAnQ1oB8Dd-0xdOwLqWuMw&ll=46.97070266941583%2C31.969450300000013&z=13",
+    "Одеса": "https://www.google.com/maps/d/u/0/viewer?mid=1WlFwsqR57hxtJvzWKHHpguYjw-Gvv6QU&ll=46.505228582262816%2C30.643495007229554&z=10",
+    "Полтава": "https://www.google.com/maps/d/u/0/viewer?mid=1aGROaTa6OPOTsGvrzAbdiSPUvpZo1cA&ll=49.59354781387412%2C34.536843507594725&z=12",
+    "Рівне": "https://www.google.com/maps/d/u/0/viewer?mid=1jqpYGCecy1zFXhfUz5zwTQr7aV4nXlU&ll=50.625776658980726%2C26.243116906868085&z=12",
+    "Тернопіль": "https://www.google.com/maps/d/u/0/viewer?mid=1nM68n7nP6D1gRpVC3x2E-8wcq83QRDs&ll=49.560202454739375%2C25.59590906296999&z=12",
+    "Харків": "https://www.google.com/maps/d/u/0/viewer?mid=19jXD4BddAs9_HAE4he7rWUUFKGEaNl3v&ll=49.95160510667597%2C36.370054685897266&z=14",
+    "Чернігів": "https://www.google.com/maps/d/u/0/viewer?mid=1SR9EvlXEcIk3EeIJeJDHAPqlRYyWTvM&ll=51.50050200415294%2C31.283996303050923&z=12",
+    "Чернівці": "https://www.google.com/maps/d/u/0/viewer?mid=1RrUzn_Ngks5VRHkYphXZm9TXxP3x3I&ll=48.29207824870348%2C25.93555815000003&z=13"
+}
+
 user_data = {}
 
-# --- Валидаторы ---
 def is_valid_name(name):
     return bool(re.match(r"^[А-ЩЬЮЯІЇЄҐ][а-щьюяіїєґ]+\s[А-ЩЬЮЯІЇЄҐ][а-щьюяіїєґ]+\s[А-ЩЬЮЯІЇЄҐ][а-щьюяіїєґ]+$", name.strip()))
 
@@ -37,7 +52,6 @@ def is_valid_address(address):
 def is_valid_phone(phone):
     return bool(re.match(r"^380\d{9}$", phone.strip()))
 
-# --- Управление сообщениями ---
 async def add_message(chat_id, message, static=False):
     if chat_id not in user_data:
         user_data[chat_id] = {"messages": [], "static_messages": [], "step": None}
@@ -58,7 +72,7 @@ async def delete_all_messages(chat_id):
 def get_main_menu():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("Замовити підключення", "Замовити консультацію")
-    markup.add("Які канали входять до TV ?")
+    markup.add("Які канали входять до TV ?", "Подивитись покриття")
     return markup
 
 def get_back_menu():
@@ -71,7 +85,13 @@ def get_main_menu_button_only():
     markup.add("Головне меню")
     return markup
 
-# --- Старт ---
+def get_cities_menu():
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    for city in COVERAGE_LINKS.keys():
+        markup.add(city)
+    markup.add("Назад", "Головне меню")
+    return markup
+
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
     chat_id = message.chat.id
@@ -346,6 +366,27 @@ async def consult_handler(message: types.Message):
         user_data.pop(chat_id, None)
         msg = await message.answer("Дякуємо! Ваша заявка на консультацію прийнята.\nОберіть дію нижче:", reply_markup=get_main_menu())
         await add_message(chat_id, msg)
+
+@dp.message_handler(lambda m: m.text == "Подивитись покриття")
+async def show_coverage_menu(message: types.Message):
+    chat_id = message.chat.id
+    await delete_all_messages(chat_id)
+    user_data[chat_id]["step"] = "select_city"
+    msg = await message.answer("Оберіть місто для перегляду покриття:", reply_markup=get_cities_menu())
+    await add_message(chat_id, msg)
+
+@dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "select_city")
+async def coverage_city_selected(message: types.Message):
+    chat_id = message.chat.id
+    city = message.text.strip()
+    await add_message(chat_id, message)
+    if city in COVERAGE_LINKS:
+        await message.answer(f"🗺 Карта покриття для *{city}*:\n{COVERAGE_LINKS[city]}", parse_mode="Markdown", reply_markup=get_cities_menu())
+    elif city in ["Назад", "Головне меню"]:
+        await message.answer("Повернулись в головне меню.", reply_markup=get_main_menu())
+        user_data[chat_id]["step"] = None
+    else:
+        await message.answer("Будь ласка, оберіть місто зі списку.", reply_markup=get_cities_menu())
 
 # --- Запуск ---
 if __name__ == '__main__':
