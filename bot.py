@@ -55,7 +55,6 @@ def is_valid_address(address):
 
 def is_valid_phone(phone):
     return bool(re.match(r"^380\d{9}$", phone.strip()))
-
 # --- Управление сообщениями ---
 async def add_message(chat_id, message, static=False):
     if chat_id not in user_data:
@@ -74,6 +73,7 @@ async def delete_all_messages(chat_id):
                 pass
         user_data[chat_id]["messages"] = []
 
+# --- Меню ---
 def get_main_menu():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("Замовити підключення")
@@ -125,7 +125,6 @@ async def start(message: types.Message):
     )
     await add_message(chat_id, msg, static=True)
     await add_message(chat_id, message)
-
 # --- Обработка главного меню ---
 @dp.message_handler(lambda m: m.text in ["Замовити підключення", "Замовити консультацію", "Які канали входять до TV ?", "Головне меню", "Подивитись покриття"])
 async def main_menu_handler(message: types.Message):
@@ -264,7 +263,6 @@ async def order_handler(message: types.Message):
         summary = "Оберіть тариф:"
         msg = await message.answer(summary, reply_markup=markup)
         await add_message(chat_id, msg)
-
 # --- Выбор тарифа ---
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "waiting_for_tariff")
 async def tariff_selection_handler(message: types.Message):
