@@ -43,6 +43,7 @@ COVERAGE_LINKS = {
 
 user_data = {}
 
+# --- Валидаторы ---
 def is_valid_name(name):
     return bool(re.match(r"^[А-ЩЬЮЯІЇЄҐ][а-щьюяіїєґ]+\s[А-ЩЬЮЯІЇЄҐ][а-щьюяіїєґ]+\s[А-ЩЬЮЯІЇЄҐ][а-щьюяіїєґ]+$", name.strip()))
 
@@ -52,6 +53,7 @@ def is_valid_address(address):
 def is_valid_phone(phone):
     return bool(re.match(r"^380\d{9}$", phone.strip()))
 
+# --- Управление сообщениями ---
 async def add_message(chat_id, message, static=False):
     if chat_id not in user_data:
         user_data[chat_id] = {"messages": [], "static_messages": [], "step": None}
@@ -92,6 +94,7 @@ def get_cities_menu():
     markup.add("Назад", "Головне меню")
     return markup
 
+# --- Старт ---
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
     chat_id = message.chat.id
@@ -119,7 +122,7 @@ async def start(message: types.Message):
     await add_message(chat_id, message)
 
 # --- Обработка главного меню ---
-@dp.message_handler(lambda m: m.text in ["Замовити підключення", "Замовити консультацію", "Які канали входять до TV ?", "Головне меню"])
+@dp.message_handler(lambda m: m.text in ["Замовити підключення", "Замовити консультацію", "Які канали входять до TV ?", "Головне меню", "Подивитись покриття"])
 async def main_menu_handler(message: types.Message):
     chat_id = message.chat.id
     await delete_all_messages(chat_id)
@@ -152,6 +155,11 @@ async def main_menu_handler(message: types.Message):
         user_data[chat_id]["step"] = "tv_done"
         msg2 = await message.answer("Натисніть 'Назад' або 'Головне меню', щоб повернутися в меню.", reply_markup=markup)
         await add_message(chat_id, msg2)
+
+    elif message.text == "Подивитись покриття":
+        user_data[chat_id]["step"] = "select_city"
+        msg = await message.answer("Оберіть місто для перегляду покриття:", reply_markup=get_cities_menu())
+        await add_message(chat_id, msg)
 
 # --- Обработка промо-кода ---
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "ask_promo_code")
@@ -198,7 +206,7 @@ async def waiting_for_promo_code_handler(message: types.Message):
         msg = await message.answer("❗ Невірний промо-код. Спробуйте ще раз або натисніть 'Завершити' чи 'Головне меню'.", reply_markup=markup)
         await add_message(chat_id, msg)
 
-# --- Обработка ввода ФИО, адреса, телефона ---
+# --- Обработка ввода ПІБ, адреса, телефона ---
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") in ["waiting_for_name", "waiting_for_address", "waiting_for_phone"])
 async def order_handler(message: types.Message):
     chat_id = message.chat.id
@@ -367,26 +375,34 @@ async def consult_handler(message: types.Message):
         msg = await message.answer("Дякуємо! Ваша заявка на консультацію прийнята.\nОберіть дію нижче:", reply_markup=get_main_menu())
         await add_message(chat_id, msg)
 
-@dp.message_handler(lambda m: m.text == "Подивитись покриття")
-async def show_coverage_menu(message: types.Message):
-    chat_id = message.chat.id
-    await delete_all_messages(chat_id)
-    user_data[chat_id]["step"] = "select_city"
-    msg = await message.answer("Оберіть місто для перегляду покриття:", reply_markup=get_cities_menu())
-    await add_message(chat_id, msg)
-
+# --- Перелік міст покриття ---
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "select_city")
 async def coverage_city_selected(message: types.Message):
     chat_id = message.chat.id
     city = message.text.strip()
     await add_message(chat_id, message)
+
+    if city == "Головне меню":
+        await delete_all_messages(chat_id)
+        user_data.pop(chat_id, None)
+        msg = await message.answer("Повернулись в головне меню.", reply_markup=get_main_menu())
+        await add_message(chat_id, msg)
+        return
+
+    if city == "Назад":
+        await delete_all_messages(chat_id)
+        user_data[chat_id] = {"messages": [], "step": None}
+        msg = await message.answer("Повернулись в головне меню.", reply_markup=get_main_menu())
+        await add_message(chat_id, msg)
+        return
+
     if city in COVERAGE_LINKS:
-        await message.answer(f"🗺 Карта покриття для *{city}*:\n{COVERAGE_LINKS[city]}", parse_mode="Markdown", reply_markup=get_cities_menu())
-    elif city in ["Назад", "Головне меню"]:
-        await message.answer("Повернулись в головне меню.", reply_markup=get_main_menu())
-        user_data[chat_id]["step"] = None
+        link = COVERAGE_LINKS[city]
+        msg = await message.answer(f"🗺 Карта покриття для *{city}*:\n{link}", parse_mode="Markdown", reply_markup=get_cities_menu())
+        await add_message(chat_id, msg)
     else:
-        await message.answer("Будь ласка, оберіть місто зі списку.", reply_markup=get_cities_menu())
+        msg = await message.answer("Будь ласка, оберіть місто зі списку нижче.", reply_markup=get_cities_menu())
+        await add_message(chat_id, msg)
 
 # --- Запуск ---
 if __name__ == '__main__':
