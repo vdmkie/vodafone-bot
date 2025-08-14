@@ -367,8 +367,22 @@ def get_cities_menu():
 
 # --- Ссылки на карты покрытия ---
 COVERAGE_LINKS = {
-    "Київ": "https://example.com/kiev_coverage_map",
-    "Дніпро": "https://example.com/dnipro_coverage_map",
+   "Київ": "https://www.google.com/maps/d/u/0/viewer?mid=1T0wyMmx7jf99vNKMX9qBkqxPnefPbnY&ll=50.45869537257287%2C30.529932392320312&z=11",
+    "Дніпро": "https://www.google.com/maps/d/u/0/viewer?mid=1JEKUJnE9XUTZPjd-f8jmXPcvLU4s-QhE&hl=uk&ll=48.47923374885031%2C34.92072785000002&z=15",
+    "Луцьк": "https://www.google.com/maps/d/u/0/viewer?mid=1drkIR5NswXCAazpv5qmaf02lL9OfJAc&ll=50.75093726790353%2C25.32392972563127&z=12",
+    "Кривий Ріг": "https://www.google.com/maps/d/u/0/viewer?mid=17kqq7EQadI5_o5bK1_lix-Qo2wbBaJY&ll=47.910800696984694%2C33.393370494687424&z=12",
+    "Львів": "https://www.google.com/maps/d/u/0/viewer?mid=1CzE-aG4mdBTiu47Oj2u_lDDPDiNdwsAl&hl=uk&ll=49.785636139703115%2C24.064665899999994&z=17",
+    "Миколаїв": "https://www.google.com/maps/d/u/0/viewer?mid=17YcaZFCt8EAnQ1oB8Dd-0xdOwLqWuMw&ll=46.97070266941583%2C31.969450300000013&z=13",
+    "Одеса": "https://www.google.com/maps/d/u/0/viewer?mid=1WlFwsqR57hxtJvzWKHHpguYjw-Gvv6QU&ll=46.50522858226279%2C30.643495007229554&z=10",
+    "Полтава": "https://www.google.com/maps/d/u/0/viewer?mid=1aGROaTa6OPOTsGvrzAbdiSPUvpZo1cA&ll=49.593547813874146%2C34.536843507594725&z=12",
+    "Рівне": "https://www.google.com/maps/d/u/0/viewer?mid=1jqpYGCecy1zFXhfUz5zwTQr7aV4nXlU&ll=50.625776658980726%2C26.243116906868085&z=12",
+    "Тернопіль": "https://www.google.com/maps/d/u/0/viewer?mid=1nM68n7nP6D1gRpVC3x2E-8wcq83QRDs&ll=49.560202454739375%2C25.59590906296999&z=12",
+    "Харків": "https://www.google.com/maps/d/u/0/viewer?mid=19jXD4BddAs9_HAE4he7rWUUFKGEaNl3v&ll=49.95160510667597%2C36.370054685897266&z=14",
+    "Чернігів": "https://www.google.com/maps/d/u/0/viewer?mid=1SR9EvlXEcIk3EeIJeJDHAPqlRYyWTvM&ll=51.50050200415294%2C31.283996303050923&z=12",
+    "Житомир": "https://www.google.com/maps/d/u/0/viewer?mid=18I1hlGyULcjGR5iUnw83q90UVmsQ6z8&ll=50.26727655963132%2C28.665934083266755&z=12",
+    "Запоріжжя": "https://www.google.com/maps/d/u/0/viewer?mid=1Ic-EHd0ktvKf-Xu9p-CxlEfPHDfxs0s9&ll=47.832492726471166%2C35.12242729999998&z=11",
+    "Івано-Франківськ": "https://www.google.com/maps/d/u/0/viewer?mid=11nHiLJyFEDDx620KIxG17xguNgp3_GU&ll=48.92416121439265%2C24.70799684490465&z=11",
+    "Чернівці": "https://www.google.com/maps/d/u/0/viewer?mid=1aedZnI80ccELyI3FWKY5xJeed9RotXA&ll=48.28432273335117%2C25.924519174020382&z=12"
     # Можно добавить другие города по желанию
 }
 
