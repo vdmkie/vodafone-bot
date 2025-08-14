@@ -124,17 +124,32 @@ async def main_menu_handler(message: types.Message):
         markup.add("Головне меню")
         msg = await message.answer("Чи маєте Ви промо-код?", reply_markup=markup)
         await add_message(chat_id, msg)
+
     elif message.text == "Замовити консультацію":
         user_data[chat_id]["step"] = "consult_name"
         msg = await message.answer("Введіть повністю ПІБ (наприклад: Тарасов Тарас Тарасович):", reply_markup=get_main_menu_button_only())
         await add_message(chat_id, msg)
+
     elif message.text == "Які канали входять до TV ?":
+        await add_message(chat_id, message)
+        await delete_all_messages(chat_id)
+
         pdf_url = "https://github.com/vdmkie/vodafone-bot/blob/main/vf_tv.pdf?raw=true"
-        msg = await bot.send_document(chat_id, pdf_url)
-        await add_message(chat_id, msg)
+        msg_pdf = await bot.send_document(chat_id, pdf_url)
+        await add_message(chat_id, msg_pdf)
+
+        msg_text = await message.answer(
+            "📄 Файл з каналами надіслано. Натисніть 'Головне меню', щоб повернутися у меню.",
+            reply_markup=get_main_menu_button_only()
+        )
+        await add_message(chat_id, msg_text)
         user_data[chat_id]["step"] = "tv_done"
-        msg2 = await message.answer("Натисніть 'Головне меню', щоб повернутися в меню.", reply_markup=get_main_menu_button_only())
-        await add_message(chat_id, msg2)
+
+# --- Возврат в главное меню после просмотра PDF ---
+@dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "tv_done")
+async def tv_done_handler(message: types.Message):
+    if message.text == "Головне меню":
+        await go_main_menu(message)
 
 # --- Обработка промо-кода ---
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "ask_promo_code")
@@ -190,7 +205,6 @@ async def order_handler(message: types.Message):
         await go_main_menu(message)
         return
 
-    # --- ПІБ ---
     if step == "waiting_for_name":
         if not is_valid_name(text):
             msg = await message.answer("❗ Введіть повністю ПІБ (3 слова, кожне з великої літери, наприклад: Тарасов Тарас Тарасович):", reply_markup=get_main_menu_button_only())
@@ -201,7 +215,6 @@ async def order_handler(message: types.Message):
         msg = await message.answer("✅ Прийнято!. Введіть повну адресу на підключення (місто, вулиця, будинок, квартира):", reply_markup=get_main_menu_button_only())
         await add_message(chat_id, msg)
 
-    # --- Адреса ---
     elif step == "waiting_for_address":
         if not is_valid_address(text):
             msg = await message.answer("❗ Адреса некоректна. Введіть ще раз у форматі (місто, вулиця, будинок, квартира):", reply_markup=get_main_menu_button_only())
@@ -212,7 +225,6 @@ async def order_handler(message: types.Message):
         msg = await message.answer("✅ Прийнято! Введіть номер телефону у форматі 380XXXXXXXXX (без +):", reply_markup=get_main_menu_button_only())
         await add_message(chat_id, msg)
 
-    # --- Телефон ---
     elif step == "waiting_for_phone":
         if not is_valid_phone(text):
             msg = await message.answer("❗ Некоректний номер телефону. Введіть у форматі 380XXXXXXXXX:", reply_markup=get_main_menu_button_only())
@@ -303,10 +315,9 @@ async def confirmation_handler(message: types.Message):
         await add_message(chat_id, msg)
 
 # --- Консультация ---
-@dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") in ["consult_name", "consult_phone", "consult_confirm"])
+@dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "consult_name")
 async def consult_handler(message: types.Message):
     chat_id = message.chat.id
-    step = user_data[chat_id]["step"]
     text = message.text.strip()
     await add_message(chat_id, message)
 
@@ -314,43 +325,19 @@ async def consult_handler(message: types.Message):
         await go_main_menu(message)
         return
 
-    if step == "consult_name":
-        if not is_valid_name(text):
-            msg = await message.answer("❗ Введіть повністю ПІБ (3 слова, кожне з великої літери):", reply_markup=get_main_menu_button_only())
-            await add_message(chat_id, msg)
-            return
-        user_data[chat_id]["name"] = text
-        user_data[chat_id]["step"] = "consult_phone"
-        msg = await message.answer("✅ Прийнято! Введіть номер телефону у форматі 380XXXXXXXXX:", reply_markup=get_main_menu_button_only())
+    if not is_valid_name(text):
+        msg = await message.answer("❗ Введіть повністю ПІБ для консультації (3 слова, кожне з великої літери):", reply_markup=get_main_menu_button_only())
         await add_message(chat_id, msg)
+        return
 
-    elif step == "consult_phone":
-        if not is_valid_phone(text):
-            msg = await message.answer("❗ Некоректний номер телефону. Введіть у форматі 380XXXXXXXXX:", reply_markup=get_main_menu_button_only())
-            await add_message(chat_id, msg)
-            return
-        user_data[chat_id]["phone"] = text
-        user_data[chat_id]["step"] = "consult_confirm"
-        summary = f"Перевірте дані для консультації:\n\n👤 ПІБ: {user_data[chat_id]['name']}\n📞 Телефон: {user_data[chat_id]['phone']}"
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-        markup.add("Підтвердити")
-        markup.add("Головне меню")
-        msg = await message.answer(summary, reply_markup=markup)
-        await add_message(chat_id, msg)
-
-    elif step == "consult_confirm":
-        if text == "Підтвердити":
-            data = user_data[chat_id]
-            text_to_send = f"✅ Заявка на консультацію:\n\n👤 ПІБ: {data['name']}\n📞 Телефон: {data['phone']}\n\n✏️ автор Рогальов Вадим"
-            await bot.send_message(CHAT_ID, text_to_send)
-            await delete_all_messages(chat_id)
-            user_data.pop(chat_id, None)
-            msg = await message.answer("Дякуємо! Наш консультант зв'яжеться з Вами в найкоротший термін ✅", reply_markup=get_main_menu())
-            await add_message(chat_id, msg)
-        else:
-            msg = await message.answer("Будь ласка, оберіть 'Підтвердити' або 'Головне меню'.", reply_markup=get_main_menu_button_only())
-            await add_message(chat_id, msg)
+    user_data[chat_id]["consult_name"] = text
+    await bot.send_message(CHAT_ID, f"Нова заявка на консультацію:\n👤 ПІБ: {text}")
+    await delete_all_messages(chat_id)
+    user_data.pop(chat_id, None)
+    msg = await message.answer("Дякуємо! Наш менеджер зв'яжеться з Вами найближчим часом.", reply_markup=get_main_menu())
+    await add_message(chat_id, msg)
 
 # --- Запуск ---
 if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)
+
