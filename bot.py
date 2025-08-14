@@ -343,50 +343,40 @@ async def consult_handler(message: types.Message):
         msg = await message.answer("Дякуємо! Заявку на консультацію прийнято.\nОберіть дію нижче:", reply_markup=get_main_menu())
         await add_message(chat_id, msg)
 
-# Обработка выбора города для покрытия
+# --- Обработка выбора города для покрытия ---
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "choose_city")
 async def city_choice_handler(message: types.Message):
     chat_id = message.chat.id
     city = message.text.strip()
     await add_message(chat_id, message)
 
-    if city == "Назад":
+    if city.lower() == "назад":
         await delete_all_messages(chat_id)
         user_data[chat_id] = {"messages": [], "step": None}
         msg = await message.answer("Повернулись в головне меню.", reply_markup=get_main_menu())
         await add_message(chat_id, msg)
         return
 
-    if city not in CITIES_COVERAGE:
+    # Получаем ссылку безопасно через .get()
+    link = CITIES_COVERAGE.get(city)
+    if not link:
         msg = await message.answer("Будь ласка, оберіть місто зі списку.")
         await add_message(chat_id, msg)
         return
 
-    link = CITIES_COVERAGE[city]
+    # Удаляем предыдущие сообщения
     await delete_all_messages(chat_id)
+
+    # Отправляем ссылку на покрытие
     msg = await message.answer(f"Покриття в місті *{city}*:\n{link}", parse_mode="Markdown", disable_web_page_preview=False)
     await add_message(chat_id, msg)
 
+    # Кнопка «Назад»
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     markup.add("Назад")
     user_data[chat_id]["step"] = "coverage_done"
     msg2 = await message.answer("Натисніть 'Назад' щоб повернутися в меню.", reply_markup=markup)
     await add_message(chat_id, msg2)
-
-@dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "coverage_done")
-async def coverage_done_handler(message: types.Message):
-    chat_id = message.chat.id
-    text = message.text.strip()
-    await add_message(chat_id, message)
-
-    if text == "Назад":
-        await delete_all_messages(chat_id)
-        user_data[chat_id] = {"messages": [], "step": None}
-        msg = await message.answer("Повернулись в головне меню.", reply_markup=get_main_menu())
-        await add_message(chat_id, msg)
-    else:
-        msg = await message.answer("Натисніть 'Назад' щоб повернутися в меню.")
-        await add_message(chat_id, msg)
 
 # Обработка кнопки "Завершити" в любом состоянии
 @dp.message_handler(lambda m: m.text == "Завершити")
