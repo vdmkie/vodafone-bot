@@ -13,6 +13,7 @@ dp = Dispatcher(bot)
 
 user_data = {}
 
+# ------------------ Тарифы ------------------
 TARIFFS = {
     "Домашній інтернет -125грн/міс.\n(акція до 31.12.2026р., потім 250 грн/міс.)":
         "Домашній інтернет (125грн/міс. до кінця 26 року)",
@@ -51,7 +52,7 @@ CITIES_COVERAGE = {
     "Чернівці": "https://www.google.com/maps/d/u/0/viewer?mid=1aedZnI80ccELyI3FWKY5xJeed9RotXA&ll=48.28432273335117%2C25.924519174020382&z=12"
 }
 
-# --- Валидаторы ---
+# ------------------ Валидаторы ------------------
 def is_valid_name(name):
     return bool(re.match(r"^[А-ЩЬЮЯІЇЄҐ][а-щьюяіїєґ]+\s[А-ЩЬЮЯІЇЄҐ][а-щьюяіїєґ]+\s[А-ЩЬЮЯІЇЄҐ][а-щьюяіїєґ]+$", name.strip()))
 
@@ -61,7 +62,7 @@ def is_valid_address(address):
 def is_valid_phone(phone):
     return bool(re.match(r"^380\d{9}$", phone.strip()))
 
-# --- Управление сообщениями ---
+# ------------------ Работа с сообщениями ------------------
 async def add_message(chat_id, message, static=False):
     if chat_id not in user_data:
         user_data[chat_id] = {"messages": [], "static_messages": [], "step": None}
@@ -79,7 +80,7 @@ async def delete_all_messages(chat_id):
                 pass
         user_data[chat_id]["messages"] = []
 
-# --- Главное меню ---
+# ------------------ Главное меню ------------------
 def get_main_menu():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("Замовити підключення", "Замовити консультацію")
@@ -87,7 +88,7 @@ def get_main_menu():
     markup.add("Які канали входять до TV ?")
     return markup
 
-# --- Старт ---
+# ------------------ Старт ------------------
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
     chat_id = message.chat.id
@@ -116,6 +117,63 @@ async def start(message: types.Message):
     )
     await add_message(chat_id, msg, static=True)
     await add_message(chat_id, message) 
+
+# ------------------ Обработчики покрытия ------------------
+@dp.message_handler(lambda m: m.text == "Перевірити покриття")
+async def coverage_start(message: types.Message):
+    chat_id = message.chat.id
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    for city in CITIES_COVERAGE.keys():
+        markup.add(city)
+    markup.add("Назад")
+    user_data[chat_id]["step"] = "choose_city"
+    msg = await message.answer("Оберіть ваше місто зі списку:", reply_markup=markup)
+    await add_message(chat_id, msg)
+
+@dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "choose_city")
+async def city_choice_handler(message: types.Message):
+    chat_id = message.chat.id
+    city = message.text.strip()
+    await add_message(chat_id, message)
+
+    if city.lower() == "назад":
+        await delete_all_messages(chat_id)
+        user_data[chat_id] = {"messages": [], "step": None}
+        msg = await message.answer("Повернулись в головне меню.", reply_markup=get_main_menu())
+        await add_message(chat_id, msg)
+        return
+
+    matched_city = next((c for c in CITIES_COVERAGE if c.strip().lower() == city.lower()), None)
+    if not matched_city:
+        msg = await message.answer("Будь ласка, оберіть місто зі списку.")
+        await add_message(chat_id, msg)
+        return
+
+    link = CITIES_COVERAGE[matched_city]
+    await delete_all_messages(chat_id)
+    msg = await message.answer(f"Покриття в місті *{matched_city}*:\n{link}", parse_mode="Markdown", disable_web_page_preview=False)
+    await add_message(chat_id, msg)
+
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=3, one_time_keyboard=True)
+    markup.add("Назад")
+    user_data[chat_id]["step"] = "coverage_done"
+    msg2 = await message.answer("Натисніть 'Назад' щоб повернутися в меню.", reply_markup=markup)
+    await add_message(chat_id, msg2)
+
+@dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "coverage_done")
+async def coverage_done_handler(message: types.Message):
+    chat_id = message.chat.id
+    text = message.text.strip()
+    await add_message(chat_id, message)
+
+    if text.lower() == "назад":
+        await delete_all_messages(chat_id)
+        user_data[chat_id] = {"messages": [], "step": None}
+        msg = await message.answer("Повернулись в головне меню.", reply_markup=get_main_menu())
+        await add_message(chat_id, msg)
+    else:
+        msg = await message.answer("Натисніть 'Назад' щоб повернутися в меню.")
+        await add_message(chat_id, msg)
 
 
 # Обработка главного меню
