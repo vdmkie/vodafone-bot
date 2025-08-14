@@ -11,8 +11,6 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
-user_data = {}
-
 TARIFFS = {
     "Домашній інтернет -125грн/міс.\n(акція до 31.12.2026р., потім 250 грн/міс.)": "Домашній інтернет (125грн/міс. до кінця 26 року)",
     "Домашній інтернет +TV Start - 125грн/міс.\n(акція до 31.12.2026р., потім 300 грн/міс.)": "Домашній інтернет +TV Start (125грн/міс. до кінця 26 року)",
@@ -26,6 +24,8 @@ PROMO_TARIFFS = {
     "Домашній інтернет +TV Pro - 0грн/6міс.\n(6 місяців безкоштовно, потім 325 грн/міс.)": "Домашній інтернет +TV Pro (0грн/6міс.)",
     "Домашній інтернет +TV Max - 0грн/6міс.\n(6 місяців безкоштовно, потім 375 грн/міс.)": "Домашній інтернет +TV Max (0грн/6міс.)"
 }
+
+user_data = {}
 
 # --- Валидаторы ---
 def is_valid_name(name):
@@ -55,11 +55,15 @@ async def delete_all_messages(chat_id):
                 pass
         user_data[chat_id]["messages"] = []
 
-# --- Главное меню ---
 def get_main_menu():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("Замовити підключення", "Замовити консультацію")
     markup.add("Які канали входять до TV ?")
+    return markup
+
+def get_back_menu():
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add("Назад", "Завершити")
     return markup
 
 # --- Старт ---
@@ -72,22 +76,22 @@ async def start(message: types.Message):
     await add_message(chat_id, photo, static=True)
     msg = await message.answer(
         "👋 *Вітаю! Я Ваш чат-бот Тарас*\n\n"
-        "💪 *Переваги нашого провайдера це...*\n"
-        "✅ *Нова та якісна мережа!*\n"
-        "✅ *Cучасна технологія GPON!*\n"
-        "✅ *Швидкість до 1Гігабіт/сек.!*\n"
-        "✅ *Безкоштовне підключення!*\n"
-        "✅ *Понад 72 години працює без світла!*\n"
-        "✅ *Акційні тарифи!*\n\n"
-        "👉 *Домашній інтернет - 125грн/міс.*\n*акційна вартість тарифу до 31.12.2026р., далі 250 грн/міс.*\n"
-        "👉 *Домашній інтернет + TV Start - 125грн/міс.*\n*акційна вартість тарифу до 31.12.2026р., далі 300 грн/міс.*\n"
-        "👉 *Домашній інтернет + TV Pro - 125грн/міс.*\n*акційна вартість тарифу до 31.12.2026р., далі 325 грн/міс.*\n"
-        "👉 *Домашній інтернет + TV Max - 125грн/міс.*\n*акційна вартість тарифу до 31.12.2026р., далі 375 грн/міс.*\n\n"
+        "💪 *Переваги нашого провайдера:*\n"
+        "✅ Нова та якісна мережа\n"
+        "✅ Cучасна технологія GPON\n"
+        "✅ Швидкість до 1Гігабіт/сек\n"
+        "✅ Безкоштовне підключення\n"
+        "✅ Понад 72 години працює без світла\n"
+        "✅ Акційні тарифи\n\n"
+        "👉 *Домашній інтернет - 125грн/міс.*\n"
+        "👉 *Домашній інтернет + TV Start - 125грн/міс.*\n"
+        "👉 *Домашній інтернет + TV Pro - 125грн/міс.*\n"
+        "👉 *Домашній інтернет + TV Max - 125грн/міс.*\n\n"
         "Оберіть дію нижче 👇",
         reply_markup=get_main_menu(), parse_mode="Markdown"
     )
     await add_message(chat_id, msg, static=True)
-    await add_message(chat_id, message) 
+    await add_message(chat_id, message)
 
 # --- Обработка главного меню ---
 @dp.message_handler(lambda m: m.text in ["Замовити підключення", "Замовити консультацію", "Які канали входять до TV ?"])
@@ -128,7 +132,7 @@ async def ask_promo_code_handler(message: types.Message):
 
     if text == "Завершити":
         await delete_all_messages(chat_id)
-        user_data[chat_id] = {"messages": [], "step": None}
+        user_data.pop(chat_id, None)
         msg = await message.answer("Повернулись в головне меню.", reply_markup=get_main_menu())
         await add_message(chat_id, msg)
         return
@@ -140,7 +144,7 @@ async def ask_promo_code_handler(message: types.Message):
     elif text == "Ні":
         user_data[chat_id]["promo"] = False
         user_data[chat_id]["step"] = "waiting_for_name"
-        msg = await message.answer("Введіть повністю ПІБ (наприклад: Тарасов Тарас Тарасович):", reply_markup=types.ReplyKeyboardRemove())
+        msg = await message.answer("Введіть повністю ПІБ:", reply_markup=types.ReplyKeyboardRemove())
         await add_message(chat_id, msg)
     else:
         msg = await message.answer("Будь ласка, оберіть 'Так', 'Ні' або 'Завершити'.")
@@ -171,6 +175,13 @@ async def order_handler(message: types.Message):
     step = user_data[chat_id]["step"]
     text = message.text.strip()
     await add_message(chat_id, message)
+
+    if text == "Назад":
+        await delete_all_messages(chat_id)
+        user_data.pop(chat_id, None)
+        msg = await message.answer("Повернулись в головне меню.", reply_markup=get_main_menu())
+        await add_message(chat_id, msg)
+        return
 
     if step == "waiting_for_name":
         if not is_valid_name(text):
@@ -205,7 +216,7 @@ async def order_handler(message: types.Message):
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
         for t in tariffs.keys():
             markup.add(t)
-        markup.add("Почати заново")
+        markup.add("Почати заново", "Назад")
         summary = "Оберіть тариф:"
         msg = await message.answer(summary, reply_markup=markup)
         await add_message(chat_id, msg)
@@ -217,18 +228,18 @@ async def tariff_selection_handler(message: types.Message):
     text = message.text.strip()
     await add_message(chat_id, message)
 
-    promo = user_data[chat_id].get("promo", False)
-    tariffs = PROMO_TARIFFS if promo else TARIFFS
-
-    if text == "Почати заново":
+    if text in ["Почати заново", "Назад"]:
         await delete_all_messages(chat_id)
-        user_data[chat_id] = {"messages": [], "step": None}
-        msg = await message.answer("Починаємо заново. Оберіть дію:", reply_markup=get_main_menu())
+        user_data.pop(chat_id, None)
+        msg = await message.answer("Повернулись в головне меню.", reply_markup=get_main_menu())
         await add_message(chat_id, msg)
         return
 
+    promo = user_data[chat_id].get("promo", False)
+    tariffs = PROMO_TARIFFS if promo else TARIFFS
+
     if text not in tariffs:
-        msg = await message.answer("Будь ласка, оберіть тариф зі списку або натисніть 'Почати заново'.")
+        msg = await message.answer("Будь ласка, оберіть тариф зі списку або натисніть 'Почати заново' чи 'Назад'.")
         await add_message(chat_id, msg)
         return
 
@@ -242,10 +253,10 @@ async def tariff_selection_handler(message: types.Message):
         f"Телефон: {user_data[chat_id]['phone']}\n"
         f"Тариф: {text}\n\n"
         "Якщо все правильно - натисніть 'Підтвердити'.\n"
-        "Якщо ні - 'Почати заново'."
+        "Якщо ні - 'Почати заново' або 'Назад'."
     )
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    markup.add("Підтвердити", "Почати заново")
+    markup.add("Підтвердити", "Почати заново", "Назад")
     msg = await message.answer(summary, reply_markup=markup)
     await add_message(chat_id, msg)
 
@@ -256,10 +267,10 @@ async def confirmation_handler(message: types.Message):
     text = message.text.strip()
     await add_message(chat_id, message)
 
-    if text == "Почати заново":
+    if text in ["Почати заново", "Назад"]:
         await delete_all_messages(chat_id)
-        user_data[chat_id] = {"messages": [], "step": None}
-        msg = await message.answer("Починаємо заново. Оберіть дію:", reply_markup=get_main_menu())
+        user_data.pop(chat_id, None)
+        msg = await message.answer("Повернулись в головне меню.", reply_markup=get_main_menu())
         await add_message(chat_id, msg)
         return
     elif text == "Підтвердити":
@@ -278,11 +289,11 @@ async def confirmation_handler(message: types.Message):
         )
         await bot.send_message(CHAT_ID, text_to_send)
         await delete_all_messages(chat_id)
-        user_data[chat_id] = {"messages": [], "step": None}
+        user_data.pop(chat_id, None)
         msg = await message.answer("Дякуємо! Ваша заявка прийнята.\nОберіть дію нижче:", reply_markup=get_main_menu())
         await add_message(chat_id, msg)
     else:
-        msg = await message.answer("Будь ласка, оберіть 'Підтвердити' або 'Почати заново'.")
+        msg = await message.answer("Будь ласка, оберіть 'Підтвердити', 'Почати заново' або 'Назад'.")
         await add_message(chat_id, msg)
 
 # --- Консультация ---
@@ -293,9 +304,16 @@ async def consult_handler(message: types.Message):
     text = message.text.strip()
     await add_message(chat_id, message)
 
+    if text == "Назад":
+        await delete_all_messages(chat_id)
+        user_data.pop(chat_id, None)
+        msg = await message.answer("Повернулись в головне меню.", reply_markup=get_main_menu())
+        await add_message(chat_id, msg)
+        return
+
     if step == "consult_name":
         if not is_valid_name(text):
-            msg = await message.answer("❗ Введіть повністю ПІБ (3 слова, кожне з великої літери, наприклад: Тарасов Тарас Тарасович):")
+            msg = await message.answer("❗ Введіть повністю ПІБ (3 слова, кожне з великої літери):")
             await add_message(chat_id, msg)
             return
         user_data[chat_id]["consult_name"] = text
@@ -318,7 +336,7 @@ async def consult_handler(message: types.Message):
         )
         await bot.send_message(CHAT_ID, text_to_send)
         await delete_all_messages(chat_id)
-        user_data[chat_id] = {"messages": [], "step": None}
+        user_data.pop(chat_id, None)
         msg = await message.answer("Дякуємо! Ваш запит на консультацію прийнято.\nОберіть дію нижче:", reply_markup=get_main_menu())
         await add_message(chat_id, msg)
 
@@ -331,7 +349,7 @@ async def tv_done_handler(message: types.Message):
 
     if text == "Назад":
         await delete_all_messages(chat_id)
-        user_data[chat_id] = {"messages": [], "step": None}
+        user_data.pop(chat_id, None)
         msg = await message.answer("Повернулись в головне меню.", reply_markup=get_main_menu())
         await add_message(chat_id, msg)
     else:
@@ -343,7 +361,7 @@ async def tv_done_handler(message: types.Message):
 async def finish_handler(message: types.Message):
     chat_id = message.chat.id
     await delete_all_messages(chat_id)
-    user_data[chat_id] = {"messages": [], "step": None}
+    user_data.pop(chat_id, None)
     msg = await message.answer("Обробка завершена. Оберіть дію з меню:", reply_markup=get_main_menu())
     await add_message(chat_id, msg)
 
