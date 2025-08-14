@@ -11,6 +11,7 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
+# --- Тарифы ---
 TARIFFS = {
     "Домашній інтернет -125грн/міс.\n(акція до 31.12.2026р., потім 250 грн/міс.)": "Домашній інтернет (125грн/міс. до кінця 26 року)",
     "Домашній інтернет +TV Start - 125грн/міс.\n(акція до 31.12.2026р., потім 300 грн/міс.)": "Домашній інтернет +TV Start (125грн/міс. до кінця 26 року)",
@@ -25,6 +26,7 @@ PROMO_TARIFFS = {
     "Домашній інтернет +TV Max - 0грн/6міс.\n(6 місяців безкоштовно, потім 375 грн/міс.)": "Домашній інтернет +TV Max (0грн/6міс.)"
 }
 
+# --- Ссылки на карту покриття ---
 COVERAGE_LINKS = {
     "Київ": "https://www.google.com/maps/d/u/0/viewer?mid=1T0wyMmx7jf99vNKMX9qBkqxPnefPbnY&ll=50.45869537257287%2C30.529932392320312&z=11",
     "Дніпро": "https://www.google.com/maps/d/u/0/viewer?mid=1JEKUJnE9XUTZPjd-f8jmXPcvLU4s-QhE&hl=uk&ll=48.47923374885031%2C34.92072785000002&z=15",
@@ -65,15 +67,18 @@ async def add_message(chat_id, message, static=False):
     else:
         user_data[chat_id]["messages"].append(message.message_id)
 
-async def delete_all_messages(chat_id):
+async def delete_all_messages(chat_id, keep_static=False):
     if chat_id in user_data:
-        for msg_id in user_data[chat_id].get("messages", []):
+        msgs_to_delete = user_data[chat_id].get("messages", [])
+        if not keep_static:
+            msgs_to_delete += user_data[chat_id].get("static_messages", [])
+            user_data[chat_id]["static_messages"] = []
+        for msg_id in msgs_to_delete:
             try:
                 await bot.delete_message(chat_id, msg_id)
             except:
                 pass
         user_data[chat_id]["messages"] = []
-
 # --- Меню ---
 def get_main_menu():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -98,7 +103,7 @@ def get_cities_menu():
 async def go_main_menu(message: types.Message):
     chat_id = message.chat.id
     await delete_all_messages(chat_id)
-    user_data[chat_id] = {"messages": [], "step": None}
+    user_data[chat_id] = {"messages": [], "step": None, "static_messages": []}
     msg = await message.answer("Повернулись в головне меню.", reply_markup=get_main_menu())
     await add_message(chat_id, msg)
 
@@ -107,9 +112,11 @@ async def go_main_menu(message: types.Message):
 async def start(message: types.Message):
     chat_id = message.chat.id
     user_data[chat_id] = {"messages": [], "static_messages": [], "step": None}
+
     photo_url = "https://github.com/vdmkie/vodafone-bot/blob/main/%D0%B0%D0%BA%D1%86%D0%B8%D1%8F.png?raw=true"
     photo = await bot.send_photo(chat_id, photo_url)
     await add_message(chat_id, photo, static=True)
+
     msg = await message.answer(
         "👋 *Вітаю! Я Ваш чат-бот Тарас*\n\n"
         "💪 *Переваги нашого провайдера:*\n"
@@ -138,7 +145,7 @@ async def main_menu_handler(message: types.Message):
         return
 
     await delete_all_messages(chat_id)
-    user_data[chat_id] = {"messages": [], "step": None}
+    user_data[chat_id] = {"messages": [], "step": None, "static_messages": []}
     await add_message(chat_id, message)
 
     if message.text == "Замовити підключення":
@@ -166,7 +173,6 @@ async def main_menu_handler(message: types.Message):
         user_data[chat_id]["step"] = "choose_city"
         msg = await message.answer("Оберіть місто:", reply_markup=get_cities_menu())
         await add_message(chat_id, msg)
-
 # --- Обработка выбора города для карты покриття ---
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "choose_city")
 async def choose_city_handler(message: types.Message):
@@ -249,7 +255,7 @@ async def order_handler(message: types.Message):
             return
         user_data[chat_id]["name"] = text
         user_data[chat_id]["step"] = "waiting_for_address"
-        msg = await message.answer("✅ Прийнято!. Введіть повну адресу на підключення (місто, вулиця, будинок, квартира):", reply_markup=get_main_menu_button_only())
+        msg = await message.answer("✅ Прийнято! Введіть повну адресу на підключення (місто, вулиця, будинок, квартира):", reply_markup=get_main_menu_button_only())
         await add_message(chat_id, msg)
 
     elif step == "waiting_for_address":
@@ -279,7 +285,6 @@ async def order_handler(message: types.Message):
         summary = "Оберіть тариф:"
         msg = await message.answer(summary, reply_markup=markup)
         await add_message(chat_id, msg)
-
 # --- Выбор тарифа ---
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "waiting_for_tariff")
 async def tariff_selection_handler(message: types.Message):
@@ -348,7 +353,7 @@ async def confirmation_handler(message: types.Message):
         await bot.send_message(CHAT_ID, text_to_send)
         await delete_all_messages(chat_id)
         user_data.pop(chat_id, None)
-        msg = await message.answer("Дякуємо! Ваша заявка прийнята ✅.\n Наш диспетчер зв'яжеться з Вами в найкоротший термін:", reply_markup=get_main_menu())
+        msg = await message.answer("Дякуємо! Ваша заявка прийнята ✅.\nНаш диспетчер зв'яжеться з Вами в найкоротший термін.", reply_markup=get_main_menu())
         await add_message(chat_id, msg)
     else:
         msg = await message.answer("Будь ласка, оберіть 'Підтвердити' або 'Головне меню'.", reply_markup=get_main_menu_button_only())
@@ -407,12 +412,22 @@ async def consult_handler(message: types.Message):
             await bot.send_message(CHAT_ID, text_to_send)
             await delete_all_messages(chat_id)
             user_data.pop(chat_id, None)
-            msg = await message.answer("Дякуємо! Ваша заявка на консультацію прийнята ✅.\n Чекайте на дзвінок. :", reply_markup=get_main_menu())
+            msg = await message.answer("Дякуємо! Ваша заявка на консультацію прийнята ✅.\nЧекайте на дзвінок.", reply_markup=get_main_menu())
             await add_message(chat_id, msg)
         else:
             msg = await message.answer("Будь ласка, оберіть 'Підтвердити' або 'Головне меню'.", reply_markup=get_main_menu_button_only())
             await add_message(chat_id, msg)
+# --- Функция для безопасного удаления сообщений ---
+async def safe_delete_message(chat_id, message_id):
+    try:
+        await bot.delete_message(chat_id, message_id)
+    except:
+        pass
 
-# --- Запуск ---
+# --- Запуск бота ---
 if __name__ == '__main__':
-    executor.start_polling(dp, skip_updates=True)
+    # Для безопасного удаления старых сообщений при перезапуске
+    async def on_startup(dp):
+        print("Бот запущено!")
+
+    executor.start_polling(dp, skip_updates=True, on_startup=on_startup)
