@@ -73,7 +73,8 @@ async def delete_all_messages(chat_id):
 
 def get_main_menu():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add("Замовити підключення", "Замовити консультацію")
+    markup.add("Замовити підключення")
+    markup.add("Замовити консультацію")
     markup.add("Подивитись покриття")
     markup.add("Які канали входять до TV ?")
     return markup
@@ -138,7 +139,8 @@ async def main_menu_handler(message: types.Message):
     if message.text == "Замовити підключення":
         user_data[chat_id]["step"] = "ask_promo_code"
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-        markup.add("Так", "Ні", "Завершити", "Головне меню")
+        markup.add("Так", "Ні")
+        markup.add("Головне меню")
         msg = await message.answer("Чи маєте Ви промо-код?", reply_markup=markup)
         await add_message(chat_id, msg)
 
