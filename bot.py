@@ -381,3 +381,7 @@ async def consult_handler(message: types.Message):
         else:
             msg = await message.answer("Будь ласка, оберіть 'Підтвердити' або 'Головне меню'.", reply_markup=get_main_menu_button_only())
             await add_message(chat_id, msg)
+if __name__ == "__main__":
+    print("Бот запущен...")
+    from aiogram import executor
+    executor.start_polling(dp, skip_updates=True)
