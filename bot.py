@@ -60,7 +60,7 @@ async def delete_all_messages(chat_id):
 def get_main_menu():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("Замовити підключення","Замовити консультацію")
-    markup.add("Які канали входять до TV ?")
+    markup.add("Які канали входять до TV ?","Карта покриття")
     return markup
 
 def get_main_menu_button_only():
@@ -105,9 +105,8 @@ async def start(message: types.Message):
     )
     await add_message(chat_id, msg, static=True)
     await add_message(chat_id, message)
-
 # --- Обработка главного меню ---
-@dp.message_handler(lambda m: m.text in ["Замовити підключення", "Замовити консультацію", "Які канали входять до TV ?", "Головне меню"])
+@dp.message_handler(lambda m: m.text in ["Замовити підключення", "Замовити консультацію", "Які канали входять до TV ?", "Карта покриття", "Головне меню"])
 async def main_menu_handler(message: types.Message):
     chat_id = message.chat.id
     if message.text == "Головне меню":
@@ -131,25 +130,39 @@ async def main_menu_handler(message: types.Message):
         await add_message(chat_id, msg)
 
     elif message.text == "Які канали входять до TV ?":
-        await add_message(chat_id, message)
-        await delete_all_messages(chat_id)
-
         pdf_url = "https://github.com/vdmkie/vodafone-bot/blob/main/vf_tv.pdf?raw=true"
-        msg_pdf = await bot.send_document(chat_id, pdf_url)
-        await add_message(chat_id, msg_pdf)
-
-        msg_text = await message.answer(
-            "📄 Файл з каналами надіслано. Натисніть 'Головне меню', щоб повернутися у меню.",
-            reply_markup=get_main_menu_button_only()
-        )
-        await add_message(chat_id, msg_text)
+        msg = await bot.send_document(chat_id, pdf_url)
+        await add_message(chat_id, msg)
         user_data[chat_id]["step"] = "tv_done"
+        msg2 = await message.answer("Натисніть 'Головне меню', щоб повернутися в меню.", reply_markup=get_main_menu_button_only())
+        await add_message(chat_id, msg2)
 
-# --- Возврат в главное меню после просмотра PDF ---
-@dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "tv_done")
-async def tv_done_handler(message: types.Message):
-    if message.text == "Головне меню":
-        await go_main_menu(message)
+    elif message.text == "Карта покриття":
+        user_data[chat_id]["step"] = "coverage"
+        # --- Список городов с ссылками ---
+        coverage_dict = {
+            "Київ": "https://www.google.com/maps/d/u/0/viewer?mid=1T0wyMmx7jf99vNKMX9qBkqxPnefPbnY&ll=50.45869537257287%2C30.529932392320312&z=11",
+            "Дніпро": "https://www.google.com/maps/d/u/0/viewer?mid=1JEKUJnE9XUTZPjd-f8jmXPcvLU4s-QhE&hl=uk&ll=48.47923374885031%2C34.92072785000002&z=15",
+            "Луцьк": "https://www.google.com/maps/d/u/0/viewer?mid=1drkIR5NswXCAazpv5qmaf02lL9OfJAc&ll=50.75093726790353%2C25.32392972563127&z=12",
+            "Кривий Ріг": "https://www.google.com/maps/d/u/0/viewer?mid=17kqq7EQadI5_o5bK1_lix-Qo2wbBaJY&ll=47.910800696984694%2C33.393370494687424&z=12",
+            "Львів": "https://www.google.com/maps/d/u/0/viewer?mid=1CzE-aG4mdBTiu47Oj2u_lDDPDiNdwsAl&hl=uk&ll=49.785636139703115%2C24.064665899999994&z=17",
+            "Миколаїв": "https://www.google.com/maps/d/u/0/viewer?mid=17YcaZFCt8EAnQ1oB8Dd-0xdOwLqWuMw&ll=46.97070266941583%2C31.969450300000013&z=13",
+            "Одеса": "https://www.google.com/maps/d/u/0/viewer?mid=1WlFwsqR57hxtJvzWKHHpguYjw-Gvv6QU&ll=46.50522858226279%2C30.643495007229554&z=10",
+            "Полтава": "https://www.google.com/maps/d/u/0/viewer?mid=1aGROaTa6OPOTsGvrzAbdiSPUvpZo1cA&ll=49.593547813874146%2C34.536843507594725&z=12",
+            "Рівне": "https://www.google.com/maps/d/u/0/viewer?mid=1jqpYGCecy1zFXhfUz5zwTQr7aV4nXlU&ll=50.625776658980726%2C26.243116906868085&z=12",
+            "Тернопіль": "https://www.google.com/maps/d/u/0/viewer?mid=1nM68n7nP6D1gRpVC3x2E-8wcq83QRDs&ll=49.560202454739375%2C25.59590906296999&z=12",
+            "Харків": "https://www.google.com/maps/d/u/0/viewer?mid=19jXD4BddAs9_HAE4he7rWUUFKGEaNl3v&ll=49.95160510667597%2C36.370054685897266&z=14",
+            "Чернігів": "https://www.google.com/maps/d/u/0/viewer?mid=1SR9EvlXEcIk3EeIJeJDHAPqlRYyWTvM&ll=51.50050200415294%2C31.283996303050923&z=12",
+            "Житомир": "https://www.google.com/maps/d/u/0/viewer?mid=18I1hlGyULcjGR5iUnw83q90UVmsQ6z8&ll=50.26727655963132%2C28.665934083266755&z=12",
+            "Запоріжжя": "https://www.google.com/maps/d/u/0/viewer?mid=1Ic-EHd0ktvKf-Xu9p-CxlEfPHDfxs0s9&ll=47.832492726471166%2C35.12242729999998&z=11",
+            "Івано-Франківськ": "https://www.google.com/maps/d/u/0/viewer?mid=11nHiLJyFEDDx620KIxG17xguNgp3_GU&ll=48.92416121439265%2C24.70799684490465&z=11",
+            "Чернівці": "https://www.google.com/maps/d/u/0/viewer?mid=1aedZnI80ccELyI3FWKY5xJeed9RotXA&ll=48.28432273335117%2C25.924519174020382&z=12"
+        }
+        text = "Список міст з покриттям:\n\n"
+        for city, link in coverage_dict.items():
+            text += f"🏙 {city}: [Переглянути карту]({link})\n"
+        msg = await message.answer(text, parse_mode="Markdown", reply_markup=get_main_menu_button_only())
+        await add_message(chat_id, msg)
 
 # --- Обработка промо-кода ---
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "ask_promo_code")
@@ -193,7 +206,7 @@ async def waiting_for_promo_code_handler(message: types.Message):
         msg = await message.answer("❗ Невірний промо-код. Введіть ще раз або натисніть 'Головне меню'.", reply_markup=get_main_menu_button_only())
         await add_message(chat_id, msg)
 
-# --- Обработка ввода ПІБ, адреса, телефона, тариф ---
+# --- Обработка ввода ПІБ, адреса, телефона ---
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") in ["waiting_for_name", "waiting_for_address", "waiting_for_phone"])
 async def order_handler(message: types.Message):
     chat_id = message.chat.id
@@ -205,6 +218,7 @@ async def order_handler(message: types.Message):
         await go_main_menu(message)
         return
 
+    # --- ПІБ ---
     if step == "waiting_for_name":
         if not is_valid_name(text):
             msg = await message.answer("❗ Введіть повністю ПІБ (3 слова, кожне з великої літери, наприклад: Тарасов Тарас Тарасович):", reply_markup=get_main_menu_button_only())
@@ -215,6 +229,7 @@ async def order_handler(message: types.Message):
         msg = await message.answer("✅ Прийнято!. Введіть повну адресу на підключення (місто, вулиця, будинок, квартира):", reply_markup=get_main_menu_button_only())
         await add_message(chat_id, msg)
 
+    # --- Адреса ---
     elif step == "waiting_for_address":
         if not is_valid_address(text):
             msg = await message.answer("❗ Адреса некоректна. Введіть ще раз у форматі (місто, вулиця, будинок, квартира):", reply_markup=get_main_menu_button_only())
@@ -225,6 +240,7 @@ async def order_handler(message: types.Message):
         msg = await message.answer("✅ Прийнято! Введіть номер телефону у форматі 380XXXXXXXXX (без +):", reply_markup=get_main_menu_button_only())
         await add_message(chat_id, msg)
 
+    # --- Телефон ---
     elif step == "waiting_for_phone":
         if not is_valid_phone(text):
             msg = await message.answer("❗ Некоректний номер телефону. Введіть у форматі 380XXXXXXXXX:", reply_markup=get_main_menu_button_only())
@@ -241,7 +257,6 @@ async def order_handler(message: types.Message):
         summary = "Оберіть тариф:"
         msg = await message.answer(summary, reply_markup=markup)
         await add_message(chat_id, msg)
-
 # --- Выбор тарифа ---
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "waiting_for_tariff")
 async def tariff_selection_handler(message: types.Message):
@@ -315,9 +330,10 @@ async def confirmation_handler(message: types.Message):
         await add_message(chat_id, msg)
 
 # --- Консультация ---
-@dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "consult_name")
+@dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") in ["consult_name", "consult_phone", "consult_confirm"])
 async def consult_handler(message: types.Message):
     chat_id = message.chat.id
+    step = user_data[chat_id]["step"]
     text = message.text.strip()
     await add_message(chat_id, message)
 
@@ -325,19 +341,43 @@ async def consult_handler(message: types.Message):
         await go_main_menu(message)
         return
 
-    if not is_valid_name(text):
-        msg = await message.answer("❗ Введіть повністю ПІБ для консультації (3 слова, кожне з великої літери):", reply_markup=get_main_menu_button_only())
+    if step == "consult_name":
+        if not is_valid_name(text):
+            msg = await message.answer("❗ Введіть повністю ПІБ (3 слова, кожне з великої літери):", reply_markup=get_main_menu_button_only())
+            await add_message(chat_id, msg)
+            return
+        user_data[chat_id]["name"] = text
+        user_data[chat_id]["step"] = "consult_phone"
+        msg = await message.answer("✅ Прийнято! Введіть номер телефону у форматі 380XXXXXXXXX:", reply_markup=get_main_menu_button_only())
         await add_message(chat_id, msg)
-        return
 
-    user_data[chat_id]["consult_name"] = text
-    await bot.send_message(CHAT_ID, f"Нова заявка на консультацію:\n👤 ПІБ: {text}")
-    await delete_all_messages(chat_id)
-    user_data.pop(chat_id, None)
-    msg = await message.answer("Дякуємо! Наш менеджер зв'яжеться з Вами найближчим часом.", reply_markup=get_main_menu())
-    await add_message(chat_id, msg)
+    elif step == "consult_phone":
+        if not is_valid_phone(text):
+            msg = await message.answer("❗ Некоректний номер телефону. Введіть у форматі 380XXXXXXXXX:", reply_markup=get_main_menu_button_only())
+            await add_message(chat_id, msg)
+            return
+        user_data[chat_id]["phone"] = text
+        user_data[chat_id]["step"] = "consult_confirm"
+        summary = f"Перевірте дані для консультації:\n\n👤 ПІБ: {user_data[chat_id]['name']}\n📞 Телефон: {user_data[chat_id]['phone']}"
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+        markup.add("Підтвердити")
+        markup.add("Головне меню")
+        msg = await message.answer(summary, reply_markup=markup)
+        await add_message(chat_id, msg)
 
-# --- Запуск ---
+    elif step == "consult_confirm":
+        if text == "Підтвердити":
+            data = user_data[chat_id]
+            text_to_send = f"✅ Заявка на консультацію:\n\n👤 ПІБ: {data['name']}\n📞 Телефон: {data['phone']}\n\n✏️ автор Рогальов Вадим"
+            await bot.send_message(CHAT_ID, text_to_send)
+            await delete_all_messages(chat_id)
+            user_data.pop(chat_id, None)
+            msg = await message.answer("Дякуємо! Наш консультант зв'яжеться з Вами в найкоротший термін ✅", reply_markup=get_main_menu())
+            await add_message(chat_id, msg)
+        else:
+            msg = await message.answer("Будь ласка, оберіть 'Підтвердити' або 'Головне меню'.", reply_markup=get_main_menu_button_only())
+            await add_message(chat_id, msg)
+
+# --- Запуск бота ---
 if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)
-
