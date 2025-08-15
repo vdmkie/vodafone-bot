@@ -60,7 +60,7 @@ async def delete_all_messages(chat_id):
 def get_main_menu():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("Замовити підключення","Замовити консультацію")
-    markup.add("Карта покриття у твоєму місті")
+    markup.add("Карта покриття")
     markup.add("Які канали входять до TV ?")
     return markup
 
