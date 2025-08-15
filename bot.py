@@ -27,7 +27,6 @@ PROMO_TARIFFS = {
 }
 
 user_data = {}
-
 # --- Валидаторы ---
 def is_valid_name(name):
     return bool(re.match(r"^[А-ЩЬЮЯІЇЄҐ][а-щьюяіїєґ]+\s[А-ЩЬЮЯІЇЄҐ][а-щьюяіїєґ]+\s[А-ЩЬЮЯІЇЄҐ][а-щьюяіїєґ]+$", name.strip()))
@@ -76,7 +75,6 @@ async def go_main_menu(message: types.Message):
     user_data[chat_id] = {"messages": [], "step": None}
     msg = await message.answer("Повернулись в головне меню.", reply_markup=get_main_menu())
     await add_message(chat_id, msg)
-
 # --- Старт ---
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
@@ -106,6 +104,7 @@ async def start(message: types.Message):
     )
     await add_message(chat_id, msg, static=True)
     await add_message(chat_id, message)
+
 # --- Обработка главного меню ---
 @dp.message_handler(lambda m: m.text in ["Замовити підключення", "Замовити консультацію", "Які канали входять до TV ?", "Карта покриття", "Головне меню"])
 async def main_menu_handler(message: types.Message):
@@ -137,34 +136,67 @@ async def main_menu_handler(message: types.Message):
         user_data[chat_id]["step"] = "tv_done"
         msg2 = await message.answer("Натисніть 'Головне меню', щоб повернутися в меню.", reply_markup=get_main_menu_button_only())
         await add_message(chat_id, msg2)
+# --- Карта покрытия ---
+@dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "coverage")
+async def coverage_handler(message: types.Message):
+    chat_id = message.chat.id
+    await add_message(chat_id, message)
 
-    elif message.text == "Карта покриття":
-        user_data[chat_id]["step"] = "coverage"
-        # --- Список городов с ссылками ---
-        coverage_dict = {
-            "Київ": "https://www.google.com/maps/d/u/0/viewer?mid=1T0wyMmx7jf99vNKMX9qBkqxPnefPbnY&ll=50.45869537257287%2C30.529932392320312&z=11",
-            "Дніпро": "https://www.google.com/maps/d/u/0/viewer?mid=1JEKUJnE9XUTZPjd-f8jmXPcvLU4s-QhE&hl=uk&ll=48.47923374885031%2C34.92072785000002&z=15",
-            "Луцьк": "https://www.google.com/maps/d/u/0/viewer?mid=1drkIR5NswXCAazpv5qmaf02lL9OfJAc&ll=50.75093726790353%2C25.32392972563127&z=12",
-            "Кривий Ріг": "https://www.google.com/maps/d/u/0/viewer?mid=17kqq7EQadI5_o5bK1_lix-Qo2wbBaJY&ll=47.910800696984694%2C33.393370494687424&z=12",
-            "Львів": "https://www.google.com/maps/d/u/0/viewer?mid=1CzE-aG4mdBTiu47Oj2u_lDDPDiNdwsAl&hl=uk&ll=49.785636139703115%2C24.064665899999994&z=17",
-            "Миколаїв": "https://www.google.com/maps/d/u/0/viewer?mid=17YcaZFCt8EAnQ1oB8Dd-0xdOwLqWuMw&ll=46.97070266941583%2C31.969450300000013&z=13",
-            "Одеса": "https://www.google.com/maps/d/u/0/viewer?mid=1WlFwsqR57hxtJvzWKHHpguYjw-Gvv6QU&ll=46.50522858226279%2C30.643495007229554&z=10",
-            "Полтава": "https://www.google.com/maps/d/u/0/viewer?mid=1aGROaTa6OPOTsGvrzAbdiSPUvpZo1cA&ll=49.593547813874146%2C34.536843507594725&z=12",
-            "Рівне": "https://www.google.com/maps/d/u/0/viewer?mid=1jqpYGCecy1zFXhfUz5zwTQr7aV4nXlU&ll=50.625776658980726%2C26.243116906868085&z=12",
-            "Тернопіль": "https://www.google.com/maps/d/u/0/viewer?mid=1nM68n7nP6D1gRpVC3x2E-8wcq83QRDs&ll=49.560202454739375%2C25.59590906296999&z=12",
-            "Харків": "https://www.google.com/maps/d/u/0/viewer?mid=19jXD4BddAs9_HAE4he7rWUUFKGEaNl3v&ll=49.95160510667597%2C36.370054685897266&z=14",
-            "Чернігів": "https://www.google.com/maps/d/u/0/viewer?mid=1SR9EvlXEcIk3EeIJeJDHAPqlRYyWTvM&ll=51.50050200415294%2C31.283996303050923&z=12",
-            "Житомир": "https://www.google.com/maps/d/u/0/viewer?mid=18I1hlGyULcjGR5iUnw83q90UVmsQ6z8&ll=50.26727655963132%2C28.665934083266755&z=12",
-            "Запоріжжя": "https://www.google.com/maps/d/u/0/viewer?mid=1Ic-EHd0ktvKf-Xu9p-CxlEfPHDfxs0s9&ll=47.832492726471166%2C35.12242729999998&z=11",
-            "Івано-Франківськ": "https://www.google.com/maps/d/u/0/viewer?mid=11nHiLJyFEDDx620KIxG17xguNgp3_GU&ll=48.92416121439265%2C24.70799684490465&z=11",
-            "Чернівці": "https://www.google.com/maps/d/u/0/viewer?mid=1aedZnI80ccELyI3FWKY5xJeed9RotXA&ll=48.28432273335117%2C25.924519174020382&z=12"
-        }
-        text = "Список міст з покриттям:\n\n"
-        for city, link in coverage_dict.items():
-            text += f"🏙 {city}: [Переглянути карту]({link})\n"
-        msg = await message.answer(text, parse_mode="Markdown", reply_markup=get_main_menu_button_only())
+    # Словарь городов с ссылками на карты
+    coverage_dict = {
+        "Київ": "https://www.google.com/maps/d/u/0/viewer?mid=1T0wyMmx7jf99vNKMX9qBkqxPnefPbnY&ll=50.45869537257287%2C30.529932392320312&z=11",
+        "Дніпро": "https://www.google.com/maps/d/u/0/viewer?mid=1JEKUJnE9XUTZPjd-f8jmXPcvLU4s-QhE&hl=uk&ll=48.47923374885031%2C34.92072785000002&z=15",
+        "Луцьк": "https://www.google.com/maps/d/u/0/viewer?mid=1drkIR5NswXCAazpv5qmaf02lL9OfJAc&ll=50.75093726790353%2C25.32392972563127&z=12",
+        "Кривий Ріг": "https://www.google.com/maps/d/u/0/viewer?mid=17kqq7EQadI5_o5bK1_lix-Qo2wbBaJY&ll=47.910800696984694%2C33.393370494687424&z=12",
+        "Львів": "https://www.google.com/maps/d/u/0/viewer?mid=1CzE-aG4mdBTiu47Oj2u_lDDPDiNdwsAl&hl=uk&ll=49.785636139703115%2C24.064665899999994&z=17",
+        "Миколаїв": "https://www.google.com/maps/d/u/0/viewer?mid=17YcaZFCt8EAnQ1oB8Dd-0xdOwLqWuMw&ll=46.97070266941583%2C31.969450300000013&z=13",
+        "Одеса": "https://www.google.com/maps/d/u/0/viewer?mid=1WlFwsqR57hxtJvzWKHHpguYjw-Gvv6QU&ll=46.50522858226279%2C30.643495007229554&z=10",
+        "Полтава": "https://www.google.com/maps/d/u/0/viewer?mid=1aGROaTa6OPOTsGvrzAbdiSPUvpZo1cA&ll=49.593547813874146%2C34.536843507594725&z=12",
+        "Рівне": "https://www.google.com/maps/d/u/0/viewer?mid=1jqpYGCecy1zFXhfUz5zwTQr7aV4nXlU&ll=50.625776658980726%2C26.243116906868085&z=12",
+        "Тернопіль": "https://www.google.com/maps/d/u/0/viewer?mid=1nM68n7nP6D1gRpVC3x2E-8wcq83QRDs&ll=49.560202454739375%2C25.59590906296999&z=12",
+        "Харків": "https://www.google.com/maps/d/u/0/viewer?mid=19jXD4BddAs9_HAE4he7rWUUFKGEaNl3v&ll=49.95160510667597%2C36.370054685897266&z=14",
+        "Чернігів": "https://www.google.com/maps/d/u/0/viewer?mid=1SR9EvlXEcIk3EeIJeJDHAPqlRYyWTvM&ll=51.50050200415294%2C31.283996303050923&z=12",
+        "Житомир": "https://www.google.com/maps/d/u/0/viewer?mid=18I1hlGyULcjGR5iUnw83q90UVmsQ6z8&ll=50.26727655963132%2C28.665934083266755&z=12",
+        "Запоріжжя": "https://www.google.com/maps/d/u/0/viewer?mid=1Ic-EHd0ktvKf-Xu9p-CxlEfPHDfxs0s9&ll=47.832492726471166%2C35.12242729999998&z=11",
+        "Івано-Франківськ": "https://www.google.com/maps/d/u/0/viewer?mid=11nHiLJyFEDDx620KIxG17xguNgp3_GU&ll=48.92416121439265%2C24.70799684490465&z=11",
+        "Чернівці": "https://www.google.com/maps/d/u/0/viewer?mid=1aedZnI80ccELyI3FWKY5xJeed9RotXA&ll=48.28432273335117%2C25.924519174020382&z=12"
+    }
+
+    # --- Создаем кнопки с городами ---
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    for city in coverage_dict.keys():
+        markup.add(city)
+    markup.add("Головне меню")
+    msg = await message.answer("Оберіть місто, щоб побачити карту покриття:", reply_markup=markup)
+    await add_message(chat_id, msg)
+
+    # Сохраняем словарь городов в user_data для следующего шага
+    user_data[chat_id]["coverage_dict"] = coverage_dict
+    user_data[chat_id]["step"] = "coverage_select"
+
+# --- Обработка выбора города для карты ---
+@dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "coverage_select")
+async def coverage_city_handler(message: types.Message):
+    chat_id = message.chat.id
+    city = message.text.strip()
+    await add_message(chat_id, message)
+
+    if city == "Головне меню":
+        await go_main_menu(message)
+        return
+
+    coverage_dict = user_data[chat_id].get("coverage_dict", {})
+    if city in coverage_dict:
+        link = coverage_dict[city]
+        msg = await message.answer(f"🏙 {city}: [Переглянути карту]({link})", parse_mode="Markdown", reply_markup=get_main_menu_button_only())
         await add_message(chat_id, msg)
-
+    else:
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+        for c in coverage_dict.keys():
+            markup.add(c)
+        markup.add("Головне меню")
+        msg = await message.answer("❗ Будь ласка, оберіть місто зі списку або натисніть 'Головне меню'.", reply_markup=markup)
+        await add_message(chat_id, msg)
 # --- Обработка промо-кода ---
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "ask_promo_code")
 async def ask_promo_code_handler(message: types.Message):
@@ -258,6 +290,7 @@ async def order_handler(message: types.Message):
         summary = "Оберіть тариф:"
         msg = await message.answer(summary, reply_markup=markup)
         await add_message(chat_id, msg)
+
 # --- Выбор тарифа ---
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "waiting_for_tariff")
 async def tariff_selection_handler(message: types.Message):
@@ -378,7 +411,3 @@ async def consult_handler(message: types.Message):
         else:
             msg = await message.answer("Будь ласка, оберіть 'Підтвердити' або 'Головне меню'.", reply_markup=get_main_menu_button_only())
             await add_message(chat_id, msg)
-
-# --- Запуск бота ---
-if __name__ == '__main__':
-    executor.start_polling(dp, skip_updates=True)
