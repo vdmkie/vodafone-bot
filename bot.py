@@ -107,10 +107,10 @@ async def start(message: types.Message):
     await add_message(chat_id, msg, static=True)
     await add_message(chat_id, message)
 # --- Обработка главного меню ---
-@dp.message_handler(lambda m: m.text in ["Замовити підключення", "Замовити консультацію", "Які канали входять до TV ?", "Карта покриття", "Головне меню"])
+@dp.message_handler(lambda m: m.text in ["Замовити підключення", "Замовити консультацію", "Які канали входять до TV ?", "Карта покриття", "Головне меню", "Старт"])
 async def main_menu_handler(message: types.Message):
     chat_id = message.chat.id
-    if message.text == "Головне меню":
+    if message.text in ["Головне меню", "Старт"]:
         await go_main_menu(message)
         return
 
@@ -173,6 +173,7 @@ async def inline_main_menu(callback_query: types.CallbackQuery):
     chat_id = callback_query.message.chat.id
     await go_main_menu(callback_query.message)
     await bot.answer_callback_query(callback_query.id)
+
 # --- Обработка промо-кода ---
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "ask_promo_code")
 async def ask_promo_code_handler(message: types.Message):
@@ -214,7 +215,6 @@ async def waiting_for_promo_code_handler(message: types.Message):
     else:
         msg = await message.answer("❗ Невірний промо-код. Введіть ще раз або натисніть 'Головне меню'.", reply_markup=get_main_menu_button_only())
         await add_message(chat_id, msg)
-
 # --- Обработка ввода ПІБ, адреса, телефона ---
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") in ["waiting_for_name", "waiting_for_address", "waiting_for_phone"])
 async def order_handler(message: types.Message):
@@ -391,3 +391,4 @@ async def consult_handler(message: types.Message):
 # --- Запуск бота ---
 if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)
+
