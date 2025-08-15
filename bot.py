@@ -158,12 +158,21 @@ async def main_menu_handler(message: types.Message):
             "Івано-Франківськ": "https://www.google.com/maps/d/u/0/viewer?mid=11nHiLJyFEDDx620KIxG17xguNgp3_GU&ll=48.92416121439265%2C24.70799684490465&z=11",
             "Чернівці": "https://www.google.com/maps/d/u/0/viewer?mid=1aedZnI80ccELyI3FWKY5xJeed9RotXA&ll=48.28432273335117%2C25.924519174020382&z=12"
         }
-        text = "Список міст з покриттям:\n\n"
+
+        markup = types.InlineKeyboardMarkup()
         for city, link in coverage_dict.items():
-            text += f"🏙 {city}: [Переглянути карту]({link})\n"
-        msg = await message.answer(text, parse_mode="Markdown", reply_markup=get_main_menu_button_only())
+            markup.add(types.InlineKeyboardButton(city, url=link))
+        markup.add(types.InlineKeyboardButton("Головне меню", callback_data="main_menu"))
+
+        msg = await message.answer("Оберіть місто для перегляду карти покриття:", reply_markup=markup)
         await add_message(chat_id, msg)
 
+# --- Callback для кнопки Головне меню в inline ---
+@dp.callback_query_handler(lambda c: c.data == "main_menu")
+async def inline_main_menu(callback_query: types.CallbackQuery):
+    chat_id = callback_query.message.chat.id
+    await go_main_menu(callback_query.message)
+    await bot.answer_callback_query(callback_query.id)
 # --- Обработка промо-кода ---
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "ask_promo_code")
 async def ask_promo_code_handler(message: types.Message):
@@ -181,7 +190,7 @@ async def ask_promo_code_handler(message: types.Message):
     elif text == "Ні":
         user_data[chat_id]["promo"] = False
         user_data[chat_id]["step"] = "waiting_for_name"
-        msg = await message.answer("✅ Прийнято! Введіть повністю ПІБ (наприклад: Тарасов Тарас Тарасович):", reply_markup=get_main_menu_button_only())
+        msg = await message.answer("✅ Прийнято! Введіть повністю ПІБ:", reply_markup=get_main_menu_button_only())
         await add_message(chat_id, msg)
     else:
         msg = await message.answer("Будь ласка, оберіть 'Так', 'Ні' або 'Головне меню'.", reply_markup=get_main_menu_button_only())
@@ -205,6 +214,7 @@ async def waiting_for_promo_code_handler(message: types.Message):
     else:
         msg = await message.answer("❗ Невірний промо-код. Введіть ще раз або натисніть 'Головне меню'.", reply_markup=get_main_menu_button_only())
         await add_message(chat_id, msg)
+
 # --- Обработка ввода ПІБ, адреса, телефона ---
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") in ["waiting_for_name", "waiting_for_address", "waiting_for_phone"])
 async def order_handler(message: types.Message):
@@ -217,29 +227,26 @@ async def order_handler(message: types.Message):
         await go_main_menu(message)
         return
 
-    # --- ПІБ ---
     if step == "waiting_for_name":
         if not is_valid_name(text):
-            msg = await message.answer("❗ Введіть повністю ПІБ (3 слова, кожне з великої літери, наприклад: Тарасов Тарас Тарасович):", reply_markup=get_main_menu_button_only())
+            msg = await message.answer("❗ Введіть ПІБ (3 слова, з великої літери):", reply_markup=get_main_menu_button_only())
             await add_message(chat_id, msg)
             return
         user_data[chat_id]["name"] = text
         user_data[chat_id]["step"] = "waiting_for_address"
-        msg = await message.answer("✅ Прийнято! Введіть повну адресу на підключення (місто, вулиця, будинок, квартира):", reply_markup=get_main_menu_button_only())
+        msg = await message.answer("✅ Прийнято! Введіть повну адресу:", reply_markup=get_main_menu_button_only())
         await add_message(chat_id, msg)
 
-    # --- Адреса ---
     elif step == "waiting_for_address":
         if not is_valid_address(text):
-            msg = await message.answer("❗ Адреса некоректна. Введіть ще раз у форматі (місто, вулиця, будинок, квартира):", reply_markup=get_main_menu_button_only())
+            msg = await message.answer("❗ Адреса некоректна. Введіть ще раз:", reply_markup=get_main_menu_button_only())
             await add_message(chat_id, msg)
             return
         user_data[chat_id]["address"] = text
         user_data[chat_id]["step"] = "waiting_for_phone"
-        msg = await message.answer("✅ Прийнято! Введіть номер телефону у форматі 380XXXXXXXXX (без +):", reply_markup=get_main_menu_button_only())
+        msg = await message.answer("✅ Прийнято! Введіть номер телефону 380XXXXXXXXX:", reply_markup=get_main_menu_button_only())
         await add_message(chat_id, msg)
 
-    # --- Телефон ---
     elif step == "waiting_for_phone":
         if not is_valid_phone(text):
             msg = await message.answer("❗ Некоректний номер телефону. Введіть у форматі 380XXXXXXXXX:", reply_markup=get_main_menu_button_only())
@@ -253,8 +260,7 @@ async def order_handler(message: types.Message):
         for t in tariffs.keys():
             markup.add(t)
         markup.add("Головне меню")
-        summary = "Оберіть тариф:"
-        msg = await message.answer(summary, reply_markup=markup)
+        msg = await message.answer("Оберіть тариф:", reply_markup=markup)
         await add_message(chat_id, msg)
 
 # --- Выбор тарифа ---
@@ -275,18 +281,18 @@ async def tariff_selection_handler(message: types.Message):
         for t in tariffs.keys():
             markup.add(t)
         markup.add("Головне меню")
-        msg = await message.answer("✅ Прийнято! Будь ласка, оберіть тариф зі списку або натисніть 'Головне меню'.", reply_markup=markup)
+        msg = await message.answer("❗ Оберіть тариф зі списку:", reply_markup=markup)
         await add_message(chat_id, msg)
         return
 
     user_data[chat_id]["selected_tariff"] = text
     user_data[chat_id]["step"] = "waiting_for_confirmation"
-
+    data = user_data[chat_id]
     summary = (
-        f"Перевірте данні та підтвердіть заявку:\n\n"
-        f"👤 ПІБ: {user_data[chat_id]['name']}\n"
-        f"🏠 Адреса: {user_data[chat_id]['address']}\n"
-        f"📞 Телефон: {user_data[chat_id]['phone']}\n"
+        f"Перевірте дані та підтвердіть заявку:\n\n"
+        f"👤 ПІБ: {data['name']}\n"
+        f"🏠 Адреса: {data['address']}\n"
+        f"📞 Телефон: {data['phone']}\n"
         f"📦 Тариф: {text}\n\n"
         "Якщо все правильно - натисніть 'Підтвердити'.\n"
         "Якщо ні - натисніть 'Головне меню'."
@@ -345,12 +351,12 @@ async def consult_handler(message: types.Message):
 
     if step == "consult_name":
         if not is_valid_name(text):
-            msg = await message.answer("❗ Введіть повністю ПІБ (3 слова, кожне з великої літери):", reply_markup=get_main_menu_button_only())
+            msg = await message.answer("❗ Введіть ПІБ (3 слова, з великої літери):", reply_markup=get_main_menu_button_only())
             await add_message(chat_id, msg)
             return
         user_data[chat_id]["name"] = text
         user_data[chat_id]["step"] = "consult_phone"
-        msg = await message.answer("✅ Прийнято! Введіть номер телефону у форматі 380XXXXXXXXX:", reply_markup=get_main_menu_button_only())
+        msg = await message.answer("✅ Прийнято! Введіть номер телефону 380XXXXXXXXX:", reply_markup=get_main_menu_button_only())
         await add_message(chat_id, msg)
 
     elif step == "consult_phone":
@@ -381,7 +387,7 @@ async def consult_handler(message: types.Message):
         else:
             msg = await message.answer("Будь ласка, оберіть 'Підтвердити' або 'Головне меню'.", reply_markup=get_main_menu_button_only())
             await add_message(chat_id, msg)
-if __name__ == "__main__":
-    print("Бот запущен...")
-    from aiogram import executor
+
+# --- Запуск бота ---
+if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)
