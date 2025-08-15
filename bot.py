@@ -206,7 +206,6 @@ async def waiting_for_promo_code_handler(message: types.Message):
     else:
         msg = await message.answer("❗ Невірний промо-код. Введіть ще раз або натисніть 'Головне меню'.", reply_markup=get_main_menu_button_only())
         await add_message(chat_id, msg)
-
 # --- Обработка ввода ПІБ, адреса, телефона ---
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") in ["waiting_for_name", "waiting_for_address", "waiting_for_phone"])
 async def order_handler(message: types.Message):
@@ -258,6 +257,7 @@ async def order_handler(message: types.Message):
         summary = "Оберіть тариф:"
         msg = await message.answer(summary, reply_markup=markup)
         await add_message(chat_id, msg)
+
 # --- Выбор тарифа ---
 @dp.message_handler(lambda m: user_data.get(m.chat.id, {}).get("step") == "waiting_for_tariff")
 async def tariff_selection_handler(message: types.Message):
